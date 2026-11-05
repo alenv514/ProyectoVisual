@@ -1,0 +1,14 @@
+# NetBeans Ant Build & Dist
+/build/
+/dist/
+/nbproject/private/
+
+# SQLite runtime locks/journals
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Backup & logs
+*.bak
+*.bak_maven
+*.log
