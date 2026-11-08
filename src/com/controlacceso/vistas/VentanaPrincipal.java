@@ -1,5 +1,6 @@
 package com.controlacceso.vistas;
 
+import com.controlacceso.autenticacion.DialogoLoginAdmin;
 import com.controlacceso.comunicacion_esp32.SerialListener;
 import com.controlacceso.controlador.ControladorAcceso;
 import com.controlacceso.modelos.Empleado;
@@ -39,6 +40,8 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
     private Timer timerResetEstado;
     private JLabel lblRelojSistema;
     private Timer timerRelojSistema;
+    private boolean adminAutenticado = false;
+    private JButton btnSesionAdmin;
     private String ultimoUidLeido = "";
 
     /**
@@ -71,21 +74,46 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         cargarTablaHistorial();
         iniciarTimerResetEstado();
 
-        // Configurar reloj independiente en el panel superior
-        JPanel panelDerechoSuperior = new JPanel(new FlowLayout(FlowLayout.RIGHT, 18, 0));
+        // Configurar reloj independiente y botón admin en el panel superior
+        JPanel panelDerechoSuperior = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         panelDerechoSuperior.setOpaque(false);
         lblRelojSistema = new JLabel("🕒 " + com.controlacceso.modelos.RelojSistema.getHoraFormateada());
         lblRelojSistema.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblRelojSistema.setForeground(new Color(26, 188, 156)); // Verde esmeralda suave
         lblRelojSistema.setToolTipText("Reloj independiente del sistema (inmune a cambios de hora en Windows)");
 
+        btnSesionAdmin = new JButton();
+        btnSesionAdmin.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        actualizarEstadoBotonAdmin();
+        btnSesionAdmin.addActionListener(e -> accionarBotonAdmin());
+
         panelSuperior.remove(lblEstadoConexion);
         panelDerechoSuperior.add(lblRelojSistema);
         panelDerechoSuperior.add(lblEstadoConexion);
+        panelDerechoSuperior.add(btnSesionAdmin);
         panelSuperior.add(panelDerechoSuperior, BorderLayout.LINE_END);
         panelSuperior.revalidate();
 
         iniciarTimerRelojSistema();
+
+        // Protección de pestañas de administrador (conservando acceso directo al escaneador)
+        tabbedPane.addChangeListener(e -> {
+            int idx = tabbedPane.getSelectedIndex();
+            if (idx == 1 || idx == 2) { // Pestañas 1 (Personal) y 2 (Historial)
+                if (!adminAutenticado) {
+                    DialogoLoginAdmin dlg = new DialogoLoginAdmin(this);
+                    dlg.setVisible(true);
+                    if (dlg.isAutenticado()) {
+                        adminAutenticado = true;
+                        actualizarEstadoBotonAdmin();
+                    } else {
+                        // Si canceló o falló, regresa de inmediato a la pestaña 0 (Escaneador)
+                        SwingUtilities.invokeLater(() -> tabbedPane.setSelectedIndex(0));
+                    }
+                }
+            }
+        });
+        tabbedPane.setSelectedIndex(0);
 
         // Iniciar auto-conexión en segundo plano para el ESP32
         controlador.iniciarComunicacionSerial();
@@ -727,6 +755,50 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
             }
         });
         timerRelojSistema.start();
+    }
+
+    private void actualizarEstadoBotonAdmin() {
+        if (btnSesionAdmin != null) {
+            if (adminAutenticado) {
+                btnSesionAdmin.setText("🔓 Admin (Cerrar Sesión)");
+                btnSesionAdmin.setForeground(new Color(180, 25, 25)); // Rojo suave
+                btnSesionAdmin.setToolTipText("Sesión de administrador activa. Clic para bloquear.");
+            } else {
+                btnSesionAdmin.setText("🔒 Acceso Admin");
+                btnSesionAdmin.setForeground(new Color(15, 76, 129)); // Azul
+                btnSesionAdmin.setToolTipText("Haga clic para autenticarse como administrador.");
+            }
+        }
+    }
+
+    private void accionarBotonAdmin() {
+        if (!adminAutenticado) {
+            DialogoLoginAdmin dlg = new DialogoLoginAdmin(this);
+            dlg.setVisible(true);
+            if (dlg.isAutenticado()) {
+                adminAutenticado = true;
+                actualizarEstadoBotonAdmin();
+                JOptionPane.showMessageDialog(this,
+                        "Bienvenido, Administrador del Sistema.\nAcceso concedido a Gestión de Personal y Reportes.",
+                        "Sesión Iniciada",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+        } else {
+            int resp = JOptionPane.showConfirmDialog(this,
+                    "¿Desea cerrar la sesión de Administrador?",
+                    "Cerrar Sesión",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if (resp == JOptionPane.YES_OPTION) {
+                adminAutenticado = false;
+                actualizarEstadoBotonAdmin();
+                tabbedPane.setSelectedIndex(0);
+                JOptionPane.showMessageDialog(this,
+                        "La sesión de Administrador ha sido bloqueada.",
+                        "Sesión Cerrada",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+        }
     }
 
     private void agregarFilaReciente(RegistroAsistencia r) {
