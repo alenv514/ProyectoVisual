@@ -1,9 +1,9 @@
 package com.controlacceso.controlador;
 
 import com.controlacceso.basededatos.AsistenciaDAO;
-import com.controlacceso.basededatos.AsistenciaDAOSqlite;
+import com.controlacceso.basededatos.AsistenciaDAOMySql;
 import com.controlacceso.basededatos.EmpleadoDAO;
-import com.controlacceso.basededatos.EmpleadoDAOSqlite;
+import com.controlacceso.basededatos.EmpleadoDAOMySql;
 import com.controlacceso.comunicacion_esp32.SerialListener;
 import com.controlacceso.comunicacion_esp32.SerialManager;
 import com.controlacceso.modelos.Empleado;
@@ -11,7 +11,6 @@ import com.controlacceso.modelos.GestorTurnos;
 import com.controlacceso.modelos.RegistroAsistencia;
 import com.controlacceso.modelos.ResultadoCalculoTurno;
 
-import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -31,7 +30,7 @@ public class ControladorAcceso {
     private static final DateTimeFormatter FORMATTER_FECHA = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     public ControladorAcceso() {
-        this(new EmpleadoDAOSqlite(), new AsistenciaDAOSqlite(), new GestorTurnos(), new SerialManager());
+        this(new EmpleadoDAOMySql(), new AsistenciaDAOMySql(), new GestorTurnos(), new SerialManager());
     }
 
     public ControladorAcceso(EmpleadoDAO empleadoDAO, AsistenciaDAO asistenciaDAO,
@@ -142,14 +141,10 @@ public class ControladorAcceso {
     }
 
     // =========================================================================
-    // SERVICIOS PARA HISTORIAL Y REPORTES
+    // SERVICIOS PARA HISTORIAL Y CONSULTAS
     // =========================================================================
 
     public List<RegistroAsistencia> listarAsistenciasPorFiltros(String fecha, String nombre) {
         return asistenciaDAO.listarPorFiltros(fecha, nombre);
-    }
-
-    public boolean exportarReporteCsv(File archivo, List<RegistroAsistencia> registros) {
-        return asistenciaDAO.exportarCsv(archivo, registros);
     }
 }
