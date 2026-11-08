@@ -774,26 +774,11 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
             if (dlg.isAutenticado()) {
                 adminAutenticado = true;
                 actualizarVisibilidadTabsAdmin();
-                tabbedPane.setSelectedComponent(panelPersonal); // Enfocar directamente Gestión de Personal
-                JOptionPane.showMessageDialog(this,
-                        "Bienvenido, Administrador del Sistema.\nSe han habilitado las secciones de Gestión de Personal y Reportes.",
-                        "Sesión Iniciada",
-                        JOptionPane.INFORMATION_MESSAGE);
+                tabbedPane.setSelectedComponent(panelPersonal);
             }
         } else {
-            int resp = JOptionPane.showConfirmDialog(this,
-                    "¿Desea cerrar la sesión de Administrador?",
-                    "Cerrar Sesión",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE);
-            if (resp == JOptionPane.YES_OPTION) {
-                adminAutenticado = false;
-                actualizarVisibilidadTabsAdmin();
-                JOptionPane.showMessageDialog(this,
-                        "La sesión de Administrador ha sido cerrada.\nLas pestañas de gestión quedan protegidas y ocultas.",
-                        "Sesión Cerrada",
-                        JOptionPane.INFORMATION_MESSAGE);
-            }
+            adminAutenticado = false;
+            actualizarVisibilidadTabsAdmin();
         }
     }
 
