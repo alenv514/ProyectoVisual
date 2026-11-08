@@ -9,6 +9,7 @@ import com.controlacceso.comunicacion_esp32.SerialManager;
 import com.controlacceso.modelos.Empleado;
 import com.controlacceso.modelos.GestorTurnos;
 import com.controlacceso.modelos.RegistroAsistencia;
+import com.controlacceso.modelos.RelojSistema;
 import com.controlacceso.modelos.ResultadoCalculoTurno;
 
 import java.time.LocalDateTime;
@@ -67,7 +68,7 @@ public class ControladorAcceso {
         }
 
         String uidLimpio = uid.trim().toUpperCase();
-        LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime ahora = RelojSistema.ahora();
         String fechaHora = ahora.format(FORMATTER_COMPLETO);
         String fechaHoy = ahora.format(FORMATTER_FECHA);
 

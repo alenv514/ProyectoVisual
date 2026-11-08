@@ -37,6 +37,8 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
     private DefaultTableModel modeloUsuarios;
     private DefaultTableModel modeloHistorial;
     private Timer timerResetEstado;
+    private JLabel lblRelojSistema;
+    private Timer timerRelojSistema;
     private String ultimoUidLeido = "";
 
     /**
@@ -69,12 +71,31 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         cargarTablaHistorial();
         iniciarTimerResetEstado();
 
+        // Configurar reloj independiente en el panel superior
+        JPanel panelDerechoSuperior = new JPanel(new FlowLayout(FlowLayout.RIGHT, 18, 0));
+        panelDerechoSuperior.setOpaque(false);
+        lblRelojSistema = new JLabel("🕒 " + com.controlacceso.modelos.RelojSistema.getHoraFormateada());
+        lblRelojSistema.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblRelojSistema.setForeground(new Color(26, 188, 156)); // Verde esmeralda suave
+        lblRelojSistema.setToolTipText("Reloj independiente del sistema (inmune a cambios de hora en Windows)");
+
+        panelSuperior.remove(lblEstadoConexion);
+        panelDerechoSuperior.add(lblRelojSistema);
+        panelDerechoSuperior.add(lblEstadoConexion);
+        panelSuperior.add(panelDerechoSuperior, BorderLayout.LINE_END);
+        panelSuperior.revalidate();
+
+        iniciarTimerRelojSistema();
+
         // Iniciar auto-conexión en segundo plano para el ESP32
         controlador.iniciarComunicacionSerial();
 
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
+                if (timerRelojSistema != null) {
+                    timerRelojSistema.stop();
+                }
                 controlador.detenerComunicacionSerial();
             }
         });
@@ -697,6 +718,15 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
             lblTituloResultado.setText("ESPERANDO LECTURA RFID");
         });
         timerResetEstado.setRepeats(false);
+    }
+
+    private void iniciarTimerRelojSistema() {
+        timerRelojSistema = new Timer(1000, e -> {
+            if (lblRelojSistema != null) {
+                lblRelojSistema.setText("🕒 " + com.controlacceso.modelos.RelojSistema.getHoraFormateada());
+            }
+        });
+        timerRelojSistema.start();
     }
 
     private void agregarFilaReciente(RegistroAsistencia r) {
