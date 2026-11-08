@@ -408,8 +408,8 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
 
         panelBotonesForm.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 10, 10));
 
-        btnGuardarUsuario.setBackground(new java.awt.Color(41, 128, 185));
-        btnGuardarUsuario.setForeground(new java.awt.Color(255, 255, 255));
+        btnGuardarUsuario.setFont(new java.awt.Font("Segoe UI", 1, 12));
+        btnGuardarUsuario.setForeground(new java.awt.Color(15, 76, 129));
         btnGuardarUsuario.setText("Guardar / Actualizar");
         btnGuardarUsuario.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -426,8 +426,8 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         });
         panelBotonesForm.add(btnLimpiarUsuario);
 
-        btnEliminarUsuario.setBackground(new java.awt.Color(192, 57, 43));
-        btnEliminarUsuario.setForeground(new java.awt.Color(255, 255, 255));
+        btnEliminarUsuario.setFont(new java.awt.Font("Segoe UI", 1, 12));
+        btnEliminarUsuario.setForeground(new java.awt.Color(180, 25, 25));
         btnEliminarUsuario.setText("Eliminar");
         btnEliminarUsuario.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -534,8 +534,8 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         });
         panelFiltrosHistorial.add(btnLimpiarFiltroHistorial);
 
-        btnGenerarReporte.setBackground(new java.awt.Color(41, 128, 185));
-        btnGenerarReporte.setForeground(new java.awt.Color(255, 255, 255));
+        btnGenerarReporte.setFont(new java.awt.Font("Segoe UI", 1, 12));
+        btnGenerarReporte.setForeground(new java.awt.Color(15, 76, 129));
         btnGenerarReporte.setText("Generar Reporte Jasper (PDF)");
         btnGenerarReporte.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

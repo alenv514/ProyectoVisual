@@ -634,11 +634,11 @@
                   <SubComponents>
                     <Component class="javax.swing.JButton" name="btnGuardarUsuario">
                       <Properties>
-                        <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-                          <Color blue="b9" green="80" red="29" type="rgb"/>
+                        <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+                          <Font name="Segoe UI" size="12" style="1"/>
                         </Property>
                         <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-                          <Color blue="ff" green="ff" red="ff" type="rgb"/>
+                          <Color blue="81" green="4c" red="0f" type="rgb"/>
                         </Property>
                         <Property name="text" type="java.lang.String" value="Guardar / Actualizar"/>
                       </Properties>
@@ -656,11 +656,11 @@
                     </Component>
                     <Component class="javax.swing.JButton" name="btnEliminarUsuario">
                       <Properties>
-                        <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-                          <Color blue="2b" green="39" red="c0" type="rgb"/>
+                        <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+                          <Font name="Segoe UI" size="12" style="1"/>
                         </Property>
                         <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-                          <Color blue="ff" green="ff" red="ff" type="rgb"/>
+                          <Color blue="19" green="19" red="b4" type="rgb"/>
                         </Property>
                         <Property name="text" type="java.lang.String" value="Eliminar"/>
                       </Properties>
@@ -877,11 +877,11 @@
                 </Component>
                 <Component class="javax.swing.JButton" name="btnGenerarReporte">
                   <Properties>
-                    <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-                      <Color blue="b9" green="80" red="29" type="rgb"/>
+                    <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+                      <Font name="Segoe UI" size="12" style="1"/>
                     </Property>
                     <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-                      <Color blue="ff" green="ff" red="ff" type="rgb"/>
+                      <Color blue="81" green="4c" red="0f" type="rgb"/>
                     </Property>
                     <Property name="text" type="java.lang.String" value="Generar Reporte Jasper (PDF)"/>
                   </Properties>
