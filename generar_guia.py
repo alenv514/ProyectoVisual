@@ -116,7 +116,7 @@ def build_document(output_paths):
         ("1", "Alen Villamarín (Líder)", "Arquitectura General, Vista Swing (Matisse) e Integración Main"),
         ("2", "Evelyn", "Modelos de Dominio y POO (Herencia Persona -> Empleado)"),
         ("3", "Mateo", "Lógica de Turnos y Penalizaciones ($3/h) con Polimorfismo"),
-        ("4", "Juan", "Capa de Persistencia, Patrón DAO y Base de Datos SQLite"),
+        ("4", "Juan", "Capa de Persistencia, Patrón DAO y Base de Datos MySQL (XAMPP)"),
         ("5", "David", "Comunicación Serial USB (jSerialComm) y Eventos Hardware"),
         ("6", "Semblantes", "Firmware ESP32 (C++ SPI RC522) y Pruebas Unitarias JUnit 5")
     ]
@@ -161,7 +161,7 @@ def build_document(output_paths):
         "El sistema es una solución integral de control de acceso físico y registro de asistencia que combina "
         "hardware embebido (microcontrolador ESP32 DevKit conectado vía SPI a un lector RFID MFRC522) y una "
         "aplicación de escritorio desarrollada en Java Swing bajo el patrón arquitectónico Modelo-Vista-Controlador (MVC), "
-        "con base de datos embebida SQLite y comunicación serial en tiempo real a 115200 baudios."
+        "con base de datos relacional MySQL (vía XAMPP / base 'control_acceso_rfid') y comunicación serial en tiempo real a 115200 baudios."
     )
     p_desc.paragraph_format.space_after = Pt(8)
 
@@ -187,7 +187,7 @@ def build_document(output_paths):
     pkgs_info = [
         ("com.controlacceso.principal", "Contiene Main.java, punto de entrada de la aplicación, configuración Look & Feel y carga de DLL nativa."),
         ("com.controlacceso.modelos", "Contiene las entidades del negocio (Persona, Empleado, RegistroAsistencia), y las clases de cálculo polimórfico de turnos (Turno, TurnoManana, TurnoTarde, GestorTurnos)."),
-        ("com.controlacceso.basededatos", "Gestión de SQLite embebido y patrón DAO (ConexionBD, EmpleadoDAO, EmpleadoDAOSqlite, AsistenciaDAO, AsistenciaDAOSqlite)."),
+        ("com.controlacceso.basededatos", "Gestión de MySQL (XAMPP base dedicada 'control_acceso_rfid') y patrón DAO (EmpleadoDAO, EmpleadoDAOMySql, AsistenciaDAO, AsistenciaDAOMySql)."),
         ("com.controlacceso.controlador", "ControladorAcceso.java que orquesta la comunicación entre el lector serial, la lógica de negocio y las vistas."),
         ("com.controlacceso.comunicacion_esp32", "SerialManager y SerialListener para conexión bidireccional USB con el microcontrolador a 115200 baud."),
         ("com.controlacceso.vistas", "VentanaPrincipal.java y VentanaPrincipal.form con diseño gráfico NetBeans Matisse y renderizado de tablas.")
@@ -261,7 +261,7 @@ def build_document(output_paths):
         ("Paso 2", "Semblantes", "feature/hardware-firmware", "Firmware ESP32 C++ para lectura RC522 y primeras pruebas unitarias."),
         ("Paso 3", "Evelyn", "feature/modelos-herencia", "Entidades Persona, Empleado (Herencia) y RegistroAsistencia."),
         ("Paso 4", "Mateo", "feature/turnos-polimorfismo", "Clases Turno, TurnoManana, TurnoTarde y GestorTurnos (Polimorfismo)."),
-        ("Paso 5", "Juan", "feature/basedatos-dao-sqlite", "ConexionBD, interfaces y clases DAO con soporte de exportación CSV."),
+        ("Paso 5", "Juan", "feature/basedatos-dao-mysql", "Clase Conexion, interfaces y DAOs MySQL con reportes JasperReports."),
         ("Paso 6", "David", "feature/comunicacion-serial", "SerialManager y SerialListener con jSerialComm y auto-detección."),
         ("Paso 7", "Alen Villamarín", "feature/interfaz-grafica-mvc", "ControladorAcceso MVC, integración JFrame Swing y suite JUnit final.")
     ]
@@ -321,7 +321,7 @@ def build_document(output_paths):
                 "Mi rol asignado es la Interfaz Gráfica de Usuario (Vista) y el punto de entrada Main. "
                 "Por favor, genera:\n"
                 "1. La clase 'Main.java' en el paquete 'com.controlacceso.principal', encargada de configurar el LookAndFeel nativo de Windows, registrar la propiedad de la librería nativa jSerialComm ('jSerialComm.library.path') y desplegar la ventana en el EDT (SwingUtilities.invokeLater).\n"
-                "2. La clase 'VentanaPrincipal.java' en el paquete 'com.controlacceso.vistas', que actúe como Vista pura bajo el patrón MVC, recibiendo eventos de 'ControladorAcceso'. Debe implementar 'SerialListener', gestionar tres pestañas (Monitoreo en Vivo con indicador badge de conexión verde/gris, Gestión de Personal con CRUD de empleados, e Historial con filtros por fecha/nombre y exportación CSV).\n"
+                "2. La clase 'VentanaPrincipal.java' en el paquete 'com.controlacceso.vistas', que actúe como Vista pura bajo el patrón MVC, recibiendo eventos de 'ControladorAcceso'. Debe implementar 'SerialListener', gestionar tres pestañas (Monitoreo en Vivo con indicador badge de conexión verde/gris, Gestión de Personal con CRUD de empleados, e Historial con filtros por fecha/nombre y generación de reportes con JasperReports).\n"
                 "3. Explícame cómo el método 'mostrarResultadoEnPantalla' actualiza dinámicamente los colores a verde (#27AE60) si no hay multa y a naranja/rojo (#D35400) si existe multa por retraso o salida anticipada.\""
             ),
             "defensa": [
@@ -429,46 +429,48 @@ def build_document(output_paths):
         {
             "num": "4",
             "nombre": "Juan",
-            "rol": "Capa de Persistencia, Patrón DAO y Base de Datos SQLite",
-            "rama": "feature/basedatos-dao-sqlite",
-            "paquetes": "com.controlacceso.basededatos (ConexionBD, EmpleadoDAO, EmpleadoDAOSqlite, AsistenciaDAO, AsistenciaDAOSqlite)",
+            "rol": "Capa de Persistencia, Patrón DAO y Base de Datos MySQL (XAMPP)",
+            "rama": "feature/basedatos-dao-mysql",
+            "paquetes": "conexion (Conexion.java), com.controlacceso.basededatos (EmpleadoDAO, EmpleadoDAOMySql, AsistenciaDAO, AsistenciaDAOMySql)",
             "commits": [
-                ("Commit 1", "feat(db): clase ConexionBD con conexión JDBC SQLite embebida y creación de tablas DDL"),
+                ("Commit 1", "feat(db): clase Conexion en paquete conexion para MySQL localhost:3306/control_acceso_rfid con XAMPP"),
                 ("Commit 2", "feat(dao): interfaces EmpleadoDAO y AsistenciaDAO para abstracción de persistencia"),
-                ("Commit 3", "feat(dao): implementaciones SQLite con PreparedStatement seguras contra inyección SQL"),
-                ("Commit 4", "feat(reportes): exportación de historial de asistencias a formato CSV compatible con Excel")
+                ("Commit 3", "feat(dao): implementaciones MySQL (EmpleadoDAOMySql y AsistenciaDAOMySql) con PreparedStatement"),
+                ("Commit 4", "feat(reportes): paquete Reportes con plantilla JasperReports y GestorReportes con JasperViewer")
             ],
             "comandos": (
                 "# 1. Clonar el repositorio oficial del proyecto:\n"
                 "git clone https://github.com/alenv514/ProyectoVisual.git\n"
                 "cd ProyectoVisual\n\n"
                 "# 2. Crear y cambiarse a su rama asignada:\n"
-                "git checkout -b feature/basedatos-dao-sqlite\n\n"
+                "git checkout -b feature/basedatos-dao-mysql\n\n"
                 "# 3. Agregar conexión y DAOs con commits:\n"
-                "git add src/com/controlacceso/basededatos/ConexionBD.java\n"
-                "git commit -m \"feat(db): clase ConexionBD con inicialización de esquema SQLite\"\n"
+                "git add src/conexion/Conexion.java\n"
+                "git commit -m \"feat(db): conexión MySQL localhost:3306/control_acceso_rfid vía XAMPP\"\n"
                 "git add src/com/controlacceso/basededatos/EmpleadoDAO.java src/com/controlacceso/basededatos/AsistenciaDAO.java\n"
                 "git commit -m \"feat(dao): interfaces EmpleadoDAO y AsistenciaDAO para patrón DAO\"\n"
-                "git add src/com/controlacceso/basededatos/EmpleadoDAOSqlite.java src/com/controlacceso/basededatos/AsistenciaDAOSqlite.java\n"
-                "git commit -m \"feat(dao): implementación SQLite de DAOs y exportación de reportes CSV\"\n\n"
+                "git add src/com/controlacceso/basededatos/EmpleadoDAOMySql.java src/com/controlacceso/basededatos/AsistenciaDAOMySql.java\n"
+                "git commit -m \"feat(dao): implementaciones MySQL de DAOs con DDL automático\"\n\n"
                 "# 4. Subir la rama al repositorio de GitHub:\n"
-                "git push -u origin feature/basedatos-dao-sqlite\n"
+                "git push -u origin feature/basedatos-dao-mysql\n"
                 "# Ir a https://github.com/alenv514/ProyectoVisual y abrir el Pull Request a main."
             ),
             "prompt_ia": (
                 "\"Actúa como un Especialista en Bases de Datos y Patrón DAO en Java. "
-                "En mi proyecto grupal de Control de Acceso RFID, mi responsabilidad es la Capa de Persistencia con SQLite. "
+                "En mi proyecto grupal de Control de Acceso RFID, mi responsabilidad es la Capa de Persistencia con MySQL a través de XAMPP. "
+                "La base de datos dedicada se llama 'control_acceso_rfid' en localhost:3306, con usuario 'root' y contraseña vacía. "
                 "Necesito desacoplar totalmente la base de datos de la interfaz gráfica usando el Patrón DAO (Data Access Object). "
-                "Por favor, genera para el paquete 'com.controlacceso.basededatos':\n"
-                "1. 'ConexionBD.java': Gestiona la conexión JDBC a '%USERPROFILE%/.control_acceso_rfid/control_acceso.db', ejecutando el DDL de 'CREATE TABLE IF NOT EXISTS usuarios' y 'CREATE TABLE IF NOT EXISTS asistencias' con auto-migración de columnas.\n"
-                "2. 'EmpleadoDAO.java' y 'EmpleadoDAOSqlite.java': Interfaz e implementación con métodos CRUD: guardar(Empleado), actualizar(Empleado), eliminar(int id), buscarPorUid(String uid), listarTodos(). Utilizar PreparedStatement y try-with-resources.\n"
-                "3. 'AsistenciaDAO.java' y 'AsistenciaDAOSqlite.java': Interfaz e implementación con métodos: registrar(RegistroAsistencia), listarHoy(), listarPorFiltros(fecha, nombre), listarPorUsuarioYFecha(uid, fecha) y exportarCsv(File, List<RegistroAsistencia>) con encoding UTF-8 y BOM para Excel.\""
+                "Por favor, genera:\n"
+                "1. En el paquete 'conexion', la clase 'Conexion.java' con 'getConexion()' que cargue 'com.mysql.cj.jdbc.Driver' y conecte a 'jdbc:mysql://localhost:3306/control_acceso_rfid'. Debe incluir 'inicializarEsquema()' para auto-crear la base y las tablas en MySQL.\n"
+                "2. 'EmpleadoDAO.java' y 'EmpleadoDAOMySql.java': Interfaz e implementación con métodos CRUD: guardar(Empleado), actualizar(Empleado), eliminar(int id), buscarPorUid(String uid), listarTodos(). Utilizar PreparedStatement y try-with-resources.\n"
+                "3. 'AsistenciaDAO.java' y 'AsistenciaDAOMySql.java': Interfaz e implementación con métodos: registrar(RegistroAsistencia), listarHoy(), listarPorFiltros(fecha, nombre) y listarPorUsuarioYFecha(uid, fecha).\n"
+                "4. Paquete 'Reportes' con plantilla 'ReporteAsistencias.jrxml' y clase 'GestorReportes' utilizando JasperReports y JasperViewer para visualización, impresión y exportación oficial a PDF.\""
             ),
             "defensa": [
-                ("¿Por qué se eligió SQLite en lugar de MySQL?", 
-                 "Porque SQLite es una base de datos relacional embebida; no requiere instalar ni levantar servidores pesados como XAMPP o WAMP. El archivo se almacena en el perfil del usuario y permite que el proyecto sea 100% portable a cualquier computadora."),
+                ("¿Por qué se creó una base de datos dedicada 'control_acceso_rfid' en MySQL?", 
+                 "Porque aísla de forma profesional y segura los registros del sistema de control de acceso respecto a cualquier otro proyecto en phpMyAdmin, permitiendo una administración ordenada, independiente y limpia."),
                 ("¿Qué ventaja aporta el Patrón DAO?", 
-                 "Desacopla la lógica de negocio de la tecnología de base de datos. Si en el futuro quisiéramos migrar a PostgreSQL o MariaDB, solo creamos una nueva clase que implemente EmpleadoDAO sin tocar una sola línea de la ventana visual.")
+                 "Desacopla la lógica de negocio de la tecnología de base de datos. Gracias a este patrón, el cambio de SQLite a MySQL se realizó sin modificar ni una sola línea de la interfaz gráfica (VentanaPrincipal) ni de la lógica de turnos.")
             ]
         },
         {
@@ -527,7 +529,7 @@ def build_document(output_paths):
                 ("Commit 1", "feat(firmware): sketch C++ para ESP32 configurando bus SPI explícito (SCK 18, MISO 19, MOSI 23, SS 21)"),
                 ("Commit 2", "feat(firmware): soporte WakeupA y calibración de ganancia de antena para clones RC522 (0xB2)"),
                 ("Commit 3", "test(poo): pruebas unitarias JUnit 5 para validación de Herencia y Polimorfismo de Turnos"),
-                ("Commit 4", "test(integracion): suite de pruebas automatizadas para operaciones DAO y exportación CSV")
+                ("Commit 4", "test(integracion): suite de pruebas automatizadas para operaciones DAO y verificación de plantilla JasperReports")
             ],
             "comandos": (
                 "# 1. Clonar el repositorio oficial del proyecto:\n"
@@ -553,9 +555,9 @@ def build_document(output_paths):
                 "2. La clase de pruebas 'ControlAccesoTest.java' en 'test/com/controlacceso' con JUnit 5: "
                 "- testHerenciaPersonaEmpleado(): Verifica que Empleado sea 'instanceof Persona'.\n"
                 "- testPolimorfismoTurnos(): Valida que 20 min de atraso cobren $1.00 USD y 30 min antes cobren $1.50 USD.\n"
-                "- testCrudEmpleadoDAO(): Prueba guardado, consulta por UID y eliminación en SQLite.\n"
+                "- testCrudEmpleadoDAO(): Prueba guardado, consulta por UID y eliminación en MySQL.\n"
                 "- testControladorAccesoRfid(): Verifica accesos Permitidos vs Denegados.\n"
-                "- testExportacionCsv(): Comprueba la generación física del reporte CSV.\""
+                "- testPlantillaJasperReports(): Comprueba la existencia y carga del archivo compilado .jasper de reportes.\""
             ),
             "defensa": [
                 ("¿Por qué el lector RC522 no leía al inicio y cómo se solucionó en el firmware?", 

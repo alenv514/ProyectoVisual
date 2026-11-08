@@ -163,7 +163,7 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         cbFiltroEstado = new javax.swing.JComboBox<>();
         btnFiltrarHistorial = new javax.swing.JButton();
         btnLimpiarFiltroHistorial = new javax.swing.JButton();
-        btnExportarCsv = new javax.swing.JButton();
+        btnGenerarReporte = new javax.swing.JButton();
         jScrollPaneHistorial = new javax.swing.JScrollPane();
         tablaHistorial = new javax.swing.JTable();
         panelStatusBar = new javax.swing.JPanel();
@@ -198,7 +198,7 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         panelIzquierdoMonitoreo.setLayout(new java.awt.BorderLayout(10, 10));
 
         panelEstadoAcceso.setBackground(new java.awt.Color(52, 73, 94));
-        panelEstadoAcceso.setBorder(javax.swing.BorderFactory.createCompoundBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(44, 62, 80), 2), javax.swing.BorderFactory.createEmptyBorder(15, 15, 15, 15)));
+        panelEstadoAcceso.setBorder(javax.swing.BorderFactory.createCompoundBorder());
         panelEstadoAcceso.setLayout(new java.awt.BorderLayout());
 
         lblTituloResultado.setFont(new java.awt.Font("Segoe UI", 1, 20)); // NOI18N
@@ -288,11 +288,9 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         panelReglasHorario.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Horarios de Trabajo y Cobro ($3/hora)", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Segoe UI", 1, 12))); // NOI18N
         panelReglasHorario.setLayout(new java.awt.GridLayout(4, 1, 6, 6));
 
-        lblRegla1.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
         lblRegla1.setText("• Turno Mañana: Entrada 07:00 AM  |  Salida 01:00 PM (13:00)");
         panelReglasHorario.add(lblRegla1);
 
-        lblRegla2.setFont(new java.awt.Font("Segoe UI", 0, 12)); // NOI18N
         lblRegla2.setText("• Turno Tarde: Entrada 02:00 PM (14:00)  |  Salida 08:00 PM (20:00)");
         panelReglasHorario.add(lblRegla2);
 
@@ -536,15 +534,15 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         });
         panelFiltrosHistorial.add(btnLimpiarFiltroHistorial);
 
-        btnExportarCsv.setBackground(new java.awt.Color(39, 174, 96));
-        btnExportarCsv.setForeground(new java.awt.Color(255, 255, 255));
-        btnExportarCsv.setText("Exportar a Excel / CSV");
-        btnExportarCsv.addActionListener(new java.awt.event.ActionListener() {
+        btnGenerarReporte.setBackground(new java.awt.Color(41, 128, 185));
+        btnGenerarReporte.setForeground(new java.awt.Color(255, 255, 255));
+        btnGenerarReporte.setText("Generar Reporte Jasper (PDF)");
+        btnGenerarReporte.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnExportarCsvActionPerformed(evt);
+                btnGenerarReporteActionPerformed(evt);
             }
         });
-        panelFiltrosHistorial.add(btnExportarCsv);
+        panelFiltrosHistorial.add(btnGenerarReporte);
 
         panelHistorial.add(panelFiltrosHistorial, java.awt.BorderLayout.PAGE_START);
 
@@ -573,7 +571,7 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
 
         getContentPane().add(tabbedPane, java.awt.BorderLayout.CENTER);
 
-        panelStatusBar.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 0, 0, 0, new java.awt.Color(210, 210, 210)));
+        panelStatusBar.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 0, 0, 0, new java.awt.Color(0, 0, 0)));
         panelStatusBar.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 15, 6));
 
         lblInfo.setFont(new java.awt.Font("Segoe UI", 0, 11)); // NOI18N
@@ -584,6 +582,7 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         getContentPane().add(panelStatusBar, java.awt.BorderLayout.PAGE_END);
 
         pack();
+        setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnSimularLecturaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSimularLecturaActionPerformed
@@ -631,13 +630,10 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         cargarTablaHistorial();
     }//GEN-LAST:event_btnLimpiarFiltroHistorialActionPerformed
 
-    private void btnExportarCsvActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnExportarCsvActionPerformed
-        exportarHistorialCsv();
-    }//GEN-LAST:event_btnExportarCsvActionPerformed
+    private void btnGenerarReporteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGenerarReporteActionPerformed
+        Reportes.GestorReportes.mostrarReporteAsistencias(this);
+    }//GEN-LAST:event_btnGenerarReporteActionPerformed
 
-    // =========================================================================
-    // LÓGICA DE NEGOCIO Y CONTROL DE ACCESO
-    // =========================================================================
     private void procesarLecturaRfid(String uid) {
         String uidLimpio = uid.trim().toUpperCase();
         ultimoUidLeido = uidLimpio;
@@ -674,18 +670,18 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
             if (reg.getMulta() > 0) {
                 panelEstadoAcceso.setBackground(new java.awt.Color(211, 84, 0)); // Naranja alerta
                 String accion = reg.getTipo().startsWith("ENTRADA") ? "CON ATRASO" : "SALIDA ANTICIPADA";
-                lblTituloResultado.setText("⚠ " + reg.getTipo() + " - " + accion);
+                lblTituloResultado.setText( reg.getTipo() + " - " + accion);
                 lblMultaDetectada.setText(String.format(Locale.US, "$%.2f USD", reg.getMulta()));
                 lblMultaDetectada.setForeground(new java.awt.Color(255, 240, 120));
             } else {
                 panelEstadoAcceso.setBackground(new java.awt.Color(39, 174, 96)); // Verde éxito
-                lblTituloResultado.setText("✓ " + reg.getTipo() + " - A TIEMPO");
+                lblTituloResultado.setText( reg.getTipo() + " - A TIEMPO");
                 lblMultaDetectada.setText("$0.00 (Sin multa)");
                 lblMultaDetectada.setForeground(new java.awt.Color(190, 255, 190));
             }
         } else {
             panelEstadoAcceso.setBackground(new java.awt.Color(192, 57, 43)); // Rojo denegado
-            lblTituloResultado.setText("✗ ACCESO DENEGADO");
+            lblTituloResultado.setText(" ACCESO DENEGADO");
             lblMultaDetectada.setText("-");
             lblMultaDetectada.setForeground(java.awt.Color.WHITE);
         }
@@ -847,25 +843,7 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         }
     }
 
-    private void exportarHistorialCsv() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Guardar reporte de asistencia");
-        fileChooser.setSelectedFile(new File("reporte_asistencia_" + System.currentTimeMillis() + ".csv"));
 
-        int userSelection = fileChooser.showSaveDialog(this);
-        if (userSelection == JFileChooser.APPROVE_OPTION) {
-            File archivo = fileChooser.getSelectedFile();
-            if (!archivo.getName().toLowerCase().endsWith(".csv")) {
-                archivo = new File(archivo.getParentFile(), archivo.getName() + ".csv");
-            }
-            List<RegistroAsistencia> todos = controlador.listarAsistenciasPorFiltros(null, null);
-            if (controlador.exportarReporteCsv(archivo, todos)) {
-                JOptionPane.showMessageDialog(this, "Reporte exportado exitosamente:\n" + archivo.getAbsolutePath(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                JOptionPane.showMessageDialog(this, "Error al generar el reporte.", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }
 
     // =========================================================================
     // EVENTOS SERIAL
@@ -941,7 +919,7 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnBuscarUsuario;
     private javax.swing.JButton btnEliminarUsuario;
-    private javax.swing.JButton btnExportarCsv;
+    private javax.swing.JButton btnGenerarReporte;
     private javax.swing.JButton btnFiltrarHistorial;
     private javax.swing.JButton btnGuardarUsuario;
     private javax.swing.JButton btnLimpiarFiltroHistorial;
@@ -1019,4 +997,16 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
     private javax.swing.JTextField txtRegUid;
     private javax.swing.JTextField txtSimularUid;
     // End of variables declaration//GEN-END:variables
+
+    public static void main(String args[]) {
+        try {
+            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ex) {
+            java.util.logging.Logger.getLogger(VentanaPrincipal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+
+        java.awt.EventQueue.invokeLater(() -> {
+            new VentanaPrincipal().setVisible(true);
+        });
+    }
 }

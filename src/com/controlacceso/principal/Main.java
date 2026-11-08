@@ -6,15 +6,9 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import java.io.File;
 
-/**
- * Punto de entrada principal de la aplicación de escritorio.
- * Paquete: com.controlacceso.principal
- */
 public class Main {
 
     static {
-        // Configurar la ruta nativa fija para que jSerialComm cargue directamente
-        // el DLL x86_64 correcto y no intente extraer versiones en Temp.
         try {
             File dllDir = new File("lib/native");
             if (dllDir.exists()) {

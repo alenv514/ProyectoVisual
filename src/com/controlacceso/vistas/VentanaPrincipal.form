@@ -22,6 +22,7 @@
     <AuxValue name="FormSettings_listenerGenerationStyle" type="java.lang.Integer" value="0"/>
     <AuxValue name="FormSettings_variablesLocal" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_variablesModifier" type="java.lang.Integer" value="2"/>
+    <AuxValue name="designerSize" type="java.awt.Dimension" value="-84,-19,0,5,115,114,0,18,106,97,118,97,46,97,119,116,46,68,105,109,101,110,115,105,111,110,65,-114,-39,-41,-84,95,68,20,2,0,2,73,0,6,104,101,105,103,104,116,73,0,5,119,105,100,116,104,120,112,0,0,2,111,0,0,3,37"/>
   </AuxValues>
 
   <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout"/>
@@ -103,7 +104,7 @@
           </Properties>
           <Constraints>
             <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout$JTabbedPaneConstraintsDescription">
-              <JTabbedPaneConstraints tabTitle="Control de Acceso">
+              <JTabbedPaneConstraints tabName="Control de Acceso">
                 <Property name="tabTitle" type="java.lang.String" value="Control de Acceso"/>
               </JTabbedPaneConstraints>
             </Constraint>
@@ -138,16 +139,7 @@
                     </Property>
                     <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                       <Border info="org.netbeans.modules.form.compat2.border.CompoundBorderInfo">
-                        <CompoundBorder>
-                          <Border FuncName="createLineBorder" info="org.netbeans.modules.form.compat2.border.LineBorderInfo">
-                            <LineBorder thickness="2">
-                              <Color blue="50" green="3e" red="2c" type="rgb"/>
-                            </LineBorder>
-                          </Border>
-                          <Border FuncName="createEmptyBorder" info="org.netbeans.modules.form.compat2.border.EmptyBorderInfo">
-                            <EmptyBorder bottom="15" left="15" right="15" top="15"/>
-                          </Border>
-                        </CompoundBorder>
+                        <CompoundBorder/>
                       </Border>
                     </Property>
                   </Properties>
@@ -347,7 +339,7 @@
                               <Font name="Segoe UI" size="14" style="1"/>
                             </Property>
                             <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-                              <Color blue="00" green="ff" red="ff" type="rgb"/>
+                              <Color blue="0" green="ff" red="ff" type="rgb"/>
                             </Property>
                             <Property name="text" type="java.lang.String" value="$0.00"/>
                           </Properties>
@@ -381,17 +373,11 @@
                   <SubComponents>
                     <Component class="javax.swing.JLabel" name="lblRegla1">
                       <Properties>
-                        <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
-                          <Font name="Segoe UI" size="12" style="0"/>
-                        </Property>
                         <Property name="text" type="java.lang.String" value="&#x2022; Turno Ma&#xf1;ana: Entrada 07:00 AM  |  Salida 01:00 PM (13:00)"/>
                       </Properties>
                     </Component>
                     <Component class="javax.swing.JLabel" name="lblRegla2">
                       <Properties>
-                        <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
-                          <Font name="Segoe UI" size="12" style="0"/>
-                        </Property>
                         <Property name="text" type="java.lang.String" value="&#x2022; Turno Tarde: Entrada 02:00 PM (14:00)  |  Salida 08:00 PM (20:00)"/>
                       </Properties>
                     </Component>
@@ -407,6 +393,7 @@
                       </Properties>
                     </Component>
                     <Container class="javax.swing.JPanel" name="panelFilaSimulador">
+
                       <Layout class="org.netbeans.modules.form.compat2.layouts.DesignFlowLayout">
                         <Property name="alignment" type="int" value="0"/>
                         <Property name="horizontalGap" type="int" value="8"/>
@@ -505,7 +492,7 @@
           </Properties>
           <Constraints>
             <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout$JTabbedPaneConstraintsDescription">
-              <JTabbedPaneConstraints tabTitle="Gesti&#xf3;n de Personal">
+              <JTabbedPaneConstraints tabName="Gesti&#xf3;n de Personal">
                 <Property name="tabTitle" type="java.lang.String" value="Gesti&#xf3;n de Personal"/>
               </JTabbedPaneConstraints>
             </Constraint>
@@ -564,6 +551,7 @@
                       </Properties>
                     </Component>
                     <Container class="javax.swing.JPanel" name="panelUidInput">
+
                       <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout">
                         <Property name="horizontalGap" type="int" value="5"/>
                       </Layout>
@@ -715,7 +703,6 @@
                   <Layout class="org.netbeans.modules.form.compat2.layouts.DesignFlowLayout">
                     <Property name="alignment" type="int" value="0"/>
                     <Property name="horizontalGap" type="int" value="10"/>
-                    <Property name="verticalGap" type="int" value="5"/>
                   </Layout>
                   <SubComponents>
                     <Component class="javax.swing.JLabel" name="lblBuscarUsuario">
@@ -791,7 +778,7 @@
           </Properties>
           <Constraints>
             <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout$JTabbedPaneConstraintsDescription">
-              <JTabbedPaneConstraints tabTitle="Historial y Reportes">
+              <JTabbedPaneConstraints tabName="Historial y Reportes">
                 <Property name="tabTitle" type="java.lang.String" value="Historial y Reportes"/>
               </JTabbedPaneConstraints>
             </Constraint>
@@ -813,7 +800,7 @@
               <Constraints>
                 <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout" value="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout$BorderConstraintsDescription">
                   <BorderConstraints direction="First"/>
-                    </Constraint>
+                </Constraint>
               </Constraints>
 
               <Layout class="org.netbeans.modules.form.compat2.layouts.DesignFlowLayout">
@@ -888,18 +875,18 @@
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnLimpiarFiltroHistorialActionPerformed"/>
                   </Events>
                 </Component>
-                <Component class="javax.swing.JButton" name="btnExportarCsv">
+                <Component class="javax.swing.JButton" name="btnGenerarReporte">
                   <Properties>
                     <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-                      <Color blue="60" green="ae" red="27" type="rgb"/>
+                      <Color blue="b9" green="80" red="29" type="rgb"/>
                     </Property>
                     <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
                       <Color blue="ff" green="ff" red="ff" type="rgb"/>
                     </Property>
-                    <Property name="text" type="java.lang.String" value="Exportar a Excel / CSV"/>
+                    <Property name="text" type="java.lang.String" value="Generar Reporte Jasper (PDF)"/>
                   </Properties>
                   <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnExportarCsvActionPerformed"/>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnGenerarReporteActionPerformed"/>
                   </Events>
                 </Component>
               </SubComponents>
@@ -944,9 +931,7 @@
       <Properties>
         <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
           <Border info="org.netbeans.modules.form.compat2.border.MatteColorBorderInfo">
-            <MatteColorBorder bottom="0" left="0" right="0" top="1">
-              <Color blue="d2" green="d2" red="d2" type="rgb"/>
-            </MatteColorBorder>
+            <MatteColorBorder bottom="0" left="0" right="0" top="1"/>
           </Border>
         </Property>
       </Properties>
