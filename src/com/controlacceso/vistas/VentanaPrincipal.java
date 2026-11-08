@@ -742,23 +742,29 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
 
     private void actualizarVisibilidadTabsAdmin() {
         if (adminAutenticado) {
-            // Mostrar pestañas administrativas
+            // Mostrar pestañas administrativas y barra de simulación
             if (tabbedPane.indexOfComponent(panelPersonal) == -1) {
                 tabbedPane.addTab("Gestión de Personal", panelPersonal);
             }
             if (tabbedPane.indexOfComponent(panelHistorial) == -1) {
                 tabbedPane.addTab("Historial y Reportes", panelHistorial);
             }
+            if (panelFilaSimulador != null) {
+                panelFilaSimulador.setVisible(true);
+            }
             btnSesionAdmin.setText("Cerrar Sesión Admin");
             btnSesionAdmin.setForeground(new Color(180, 25, 25)); // Rojo para logout
             btnSesionAdmin.setToolTipText("Sesión de administrador activa. Clic para bloquear.");
         } else {
-            // Ocultar pestañas administrativas: solo se muestra el escaneador
+            // Ocultar pestañas administrativas y barra de pruebas: solo se muestra el escaneador puro
             if (tabbedPane.indexOfComponent(panelPersonal) != -1) {
                 tabbedPane.remove(panelPersonal);
             }
             if (tabbedPane.indexOfComponent(panelHistorial) != -1) {
                 tabbedPane.remove(panelHistorial);
+            }
+            if (panelFilaSimulador != null) {
+                panelFilaSimulador.setVisible(false);
             }
             tabbedPane.setSelectedIndex(0);
             btnSesionAdmin.setText("Acceso Admin");
