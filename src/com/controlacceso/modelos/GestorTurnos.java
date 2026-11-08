@@ -18,33 +18,38 @@ public class GestorTurnos {
      */
     public ResultadoCalculoTurno calcularMarcacion(LocalDateTime momento, List<RegistroAsistencia> marcasHoy) {
         LocalTime horaActual = momento.toLocalTime();
-        int cantidadMarcas = marcasHoy != null ? marcasHoy.size() : 0;
 
-        if (cantidadMarcas == 0) {
-            // Primera marca del día: Entrada
-            if (horaActual.isBefore(LocalTime.of(13, 30))) {
+        boolean tieneEntradaManana = false;
+        boolean tieneSalidaManana  = false;
+        boolean tieneEntradaTarde  = false;
+        boolean tieneSalidaTarde   = false;
+
+        if (marcasHoy != null) {
+            for (RegistroAsistencia m : marcasHoy) {
+                String t = m.getTipo();
+                if (t != null) {
+                    if (t.contains("ENTRADA MAÑANA")) tieneEntradaManana = true;
+                    if (t.contains("SALIDA MAÑANA"))  tieneSalidaManana  = true;
+                    if (t.contains("ENTRADA TARDE"))  tieneEntradaTarde  = true;
+                    if (t.contains("SALIDA TARDE"))   tieneSalidaTarde   = true;
+                }
+            }
+        }
+
+        if (horaActual.isBefore(LocalTime.of(13, 30))) {
+            // Horario Matutino (07:00 a 13:00)
+            if (!tieneEntradaManana) {
                 return turnoManana.evaluarEntrada(horaActual);
-            } else {
-                return turnoTarde.evaluarEntrada(horaActual);
-            }
-        } else if (cantidadMarcas == 1) {
-            // Segunda marca del día: Salida
-            RegistroAsistencia primera = marcasHoy.get(0);
-            if (primera.getTipo() != null && primera.getTipo().contains("TARDE")) {
-                return turnoTarde.evaluarSalida(horaActual);
-            } else {
+            } else if (!tieneSalidaManana) {
                 return turnoManana.evaluarSalida(horaActual);
+            } else {
+                return new ResultadoCalculoTurno("ENTRADA ADICIONAL", "-", 0, 0.0, "A TIEMPO ($0.00)");
             }
-        } else if (cantidadMarcas == 2) {
-            // Tercera marca del día: Entrada de la tarde
-            return turnoTarde.evaluarEntrada(horaActual);
-        } else if (cantidadMarcas == 3) {
-            // Cuarta marca del día: Salida de la tarde
-            return turnoTarde.evaluarSalida(horaActual);
         } else {
-            // Marcas adicionales
-            RegistroAsistencia ultima = marcasHoy.get(marcasHoy.size() - 1);
-            if (ultima.getTipo() != null && ultima.getTipo().startsWith("ENTRADA")) {
+            // Horario Vespertino (14:00 a 20:00)
+            if (!tieneEntradaTarde) {
+                return turnoTarde.evaluarEntrada(horaActual);
+            } else if (!tieneSalidaTarde) {
                 return turnoTarde.evaluarSalida(horaActual);
             } else {
                 return new ResultadoCalculoTurno("ENTRADA ADICIONAL", "-", 0, 0.0, "A TIEMPO ($0.00)");
