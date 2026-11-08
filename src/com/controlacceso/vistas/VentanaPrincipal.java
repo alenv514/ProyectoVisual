@@ -77,14 +77,13 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         // Configurar reloj independiente y botón admin en el panel superior
         JPanel panelDerechoSuperior = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
         panelDerechoSuperior.setOpaque(false);
-        lblRelojSistema = new JLabel("🕒 " + com.controlacceso.modelos.RelojSistema.getHoraFormateada());
+        lblRelojSistema = new JLabel("Hora: " + com.controlacceso.modelos.RelojSistema.getHoraFormateada());
         lblRelojSistema.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblRelojSistema.setForeground(new Color(26, 188, 156)); // Verde esmeralda suave
         lblRelojSistema.setToolTipText("Reloj independiente del sistema (inmune a cambios de hora en Windows)");
 
         btnSesionAdmin = new JButton();
         btnSesionAdmin.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        actualizarEstadoBotonAdmin();
         btnSesionAdmin.addActionListener(e -> accionarBotonAdmin());
 
         panelSuperior.remove(lblEstadoConexion);
@@ -96,24 +95,8 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
 
         iniciarTimerRelojSistema();
 
-        // Protección de pestañas de administrador (conservando acceso directo al escaneador)
-        tabbedPane.addChangeListener(e -> {
-            int idx = tabbedPane.getSelectedIndex();
-            if (idx == 1 || idx == 2) { // Pestañas 1 (Personal) y 2 (Historial)
-                if (!adminAutenticado) {
-                    DialogoLoginAdmin dlg = new DialogoLoginAdmin(this);
-                    dlg.setVisible(true);
-                    if (dlg.isAutenticado()) {
-                        adminAutenticado = true;
-                        actualizarEstadoBotonAdmin();
-                    } else {
-                        // Si canceló o falló, regresa de inmediato a la pestaña 0 (Escaneador)
-                        SwingUtilities.invokeLater(() -> tabbedPane.setSelectedIndex(0));
-                    }
-                }
-            }
-        });
-        tabbedPane.setSelectedIndex(0);
+        // Por estética y seguridad: al inicio solo se muestra la parte de la tarjeta (Control de Acceso)
+        actualizarVisibilidadTabsAdmin();
 
         // Iniciar auto-conexión en segundo plano para el ESP32
         controlador.iniciarComunicacionSerial();
@@ -751,23 +734,36 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
     private void iniciarTimerRelojSistema() {
         timerRelojSistema = new Timer(1000, e -> {
             if (lblRelojSistema != null) {
-                lblRelojSistema.setText("🕒 " + com.controlacceso.modelos.RelojSistema.getHoraFormateada());
+                lblRelojSistema.setText("Hora: " + com.controlacceso.modelos.RelojSistema.getHoraFormateada());
             }
         });
         timerRelojSistema.start();
     }
 
-    private void actualizarEstadoBotonAdmin() {
-        if (btnSesionAdmin != null) {
-            if (adminAutenticado) {
-                btnSesionAdmin.setText("🔓 Admin (Cerrar Sesión)");
-                btnSesionAdmin.setForeground(new Color(180, 25, 25)); // Rojo suave
-                btnSesionAdmin.setToolTipText("Sesión de administrador activa. Clic para bloquear.");
-            } else {
-                btnSesionAdmin.setText("🔒 Acceso Admin");
-                btnSesionAdmin.setForeground(new Color(15, 76, 129)); // Azul
-                btnSesionAdmin.setToolTipText("Haga clic para autenticarse como administrador.");
+    private void actualizarVisibilidadTabsAdmin() {
+        if (adminAutenticado) {
+            // Mostrar pestañas administrativas
+            if (tabbedPane.indexOfComponent(panelPersonal) == -1) {
+                tabbedPane.addTab("Gestión de Personal", panelPersonal);
             }
+            if (tabbedPane.indexOfComponent(panelHistorial) == -1) {
+                tabbedPane.addTab("Historial y Reportes", panelHistorial);
+            }
+            btnSesionAdmin.setText("Cerrar Sesión Admin");
+            btnSesionAdmin.setForeground(new Color(180, 25, 25)); // Rojo para logout
+            btnSesionAdmin.setToolTipText("Sesión de administrador activa. Clic para bloquear.");
+        } else {
+            // Ocultar pestañas administrativas: solo se muestra el escaneador
+            if (tabbedPane.indexOfComponent(panelPersonal) != -1) {
+                tabbedPane.remove(panelPersonal);
+            }
+            if (tabbedPane.indexOfComponent(panelHistorial) != -1) {
+                tabbedPane.remove(panelHistorial);
+            }
+            tabbedPane.setSelectedIndex(0);
+            btnSesionAdmin.setText("Acceso Admin");
+            btnSesionAdmin.setForeground(new Color(15, 76, 129)); // Azul
+            btnSesionAdmin.setToolTipText("Haga clic para autenticarse como administrador.");
         }
     }
 
@@ -777,9 +773,10 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
             dlg.setVisible(true);
             if (dlg.isAutenticado()) {
                 adminAutenticado = true;
-                actualizarEstadoBotonAdmin();
+                actualizarVisibilidadTabsAdmin();
+                tabbedPane.setSelectedComponent(panelPersonal); // Enfocar directamente Gestión de Personal
                 JOptionPane.showMessageDialog(this,
-                        "Bienvenido, Administrador del Sistema.\nAcceso concedido a Gestión de Personal y Reportes.",
+                        "Bienvenido, Administrador del Sistema.\nSe han habilitado las secciones de Gestión de Personal y Reportes.",
                         "Sesión Iniciada",
                         JOptionPane.INFORMATION_MESSAGE);
             }
@@ -791,10 +788,9 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
                     JOptionPane.QUESTION_MESSAGE);
             if (resp == JOptionPane.YES_OPTION) {
                 adminAutenticado = false;
-                actualizarEstadoBotonAdmin();
-                tabbedPane.setSelectedIndex(0);
+                actualizarVisibilidadTabsAdmin();
                 JOptionPane.showMessageDialog(this,
-                        "La sesión de Administrador ha sido bloqueada.",
+                        "La sesión de Administrador ha sido cerrada.\nLas pestañas de gestión quedan protegidas y ocultas.",
                         "Sesión Cerrada",
                         JOptionPane.INFORMATION_MESSAGE);
             }
