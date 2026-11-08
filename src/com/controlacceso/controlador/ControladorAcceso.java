@@ -148,4 +148,8 @@ public class ControladorAcceso {
     public List<RegistroAsistencia> listarAsistenciasPorFiltros(String fecha, String nombre) {
         return asistenciaDAO.listarPorFiltros(fecha, nombre);
     }
+
+    public List<RegistroAsistencia> listarAsistenciasPorFiltros(String fecha, String nombre, String tipo, String estado) {
+        return asistenciaDAO.listarPorFiltros(fecha, nombre, tipo, estado);
+    }
 }

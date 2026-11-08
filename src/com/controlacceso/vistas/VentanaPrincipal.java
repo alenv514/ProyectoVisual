@@ -536,12 +536,17 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         panelFiltrosHistorial.add(lblFiltroBuscar);
 
         txtBuscarHistorial.setColumns(14);
+        txtBuscarHistorial.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cargarTablaHistorial();
+            }
+        });
         panelFiltrosHistorial.add(txtBuscarHistorial);
 
         lblFiltroTipo.setText("Tipo:");
         panelFiltrosHistorial.add(lblFiltroTipo);
 
-        cbFiltroTipo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "TODOS", "ENTRADA MAÑANA", "SALIDA MAÑANA", "ENTRADA TARDE", "SALIDA TARDE" }));
+        cbFiltroTipo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "TODOS", "ENTRADA MAÑANA", "SALIDA MAÑANA", "ENTRADA TARDE", "SALIDA TARDE", "ENTRADA ADICIONAL", "ACCESO DENEGADO" }));
         panelFiltrosHistorial.add(cbFiltroTipo);
 
         lblFiltroEstado.setText("Estado:");
@@ -914,10 +919,18 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
     // =========================================================================
     private void cargarTablaHistorial() {
         modeloHistorial.setRowCount(0);
-        String filtroTexto = txtBuscarHistorial.getText().trim();
-        List<RegistroAsistencia> lista = controlador.listarAsistenciasPorFiltros(null, filtroTexto);
+        String filtroTexto = txtBuscarHistorial != null ? txtBuscarHistorial.getText().trim() : "";
+        String tipoSeleccionado = (cbFiltroTipo != null && cbFiltroTipo.getSelectedItem() != null)
+                ? cbFiltroTipo.getSelectedItem().toString() : "TODOS";
+        String estadoSeleccionado = (cbFiltroEstado != null && cbFiltroEstado.getSelectedItem() != null)
+                ? cbFiltroEstado.getSelectedItem().toString() : "TODOS";
+
+        String tipoFiltro = (!tipoSeleccionado.isBlank() && !tipoSeleccionado.equalsIgnoreCase("TODOS")) ? tipoSeleccionado : null;
+        String estadoFiltro = (!estadoSeleccionado.isBlank() && !estadoSeleccionado.equalsIgnoreCase("TODOS")) ? estadoSeleccionado : null;
+
+        List<RegistroAsistencia> lista = controlador.listarAsistenciasPorFiltros(null, filtroTexto, tipoFiltro, estadoFiltro);
         for (RegistroAsistencia r : lista) {
-            String multaStr = r.getMulta() > 0 ? String.format(Locale.US, "$%.2f", r.getMulta()) : ".00";
+            String multaStr = String.format(Locale.US, "$%.2f", r.getMulta());
             modeloHistorial.addRow(new Object[]{
                 r.getId(),
                 r.getFechaHora(),
@@ -991,8 +1004,24 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 if (!isSelected) {
+                    Object tipoObj = table.getValueAt(row, 5);
+                    Object detalleObj = table.getValueAt(row, 7);
                     Object multaObj = table.getValueAt(row, 8);
-                    if (multaObj != null && !multaObj.toString().equals("$0.00") && !multaObj.toString().equals("-")) {
+
+                    boolean esDenegado = (tipoObj != null && tipoObj.toString().contains("DENEGADO"))
+                            || (detalleObj != null && detalleObj.toString().contains("NO VALIDA"));
+                    boolean tieneMulta = false;
+                    if (multaObj != null) {
+                        String mStr = multaObj.toString().replace("$", "").trim();
+                        try {
+                            double mVal = Double.parseDouble(mStr);
+                            if (mVal > 0) {
+                                tieneMulta = true;
+                            }
+                        } catch (NumberFormatException ignored) {}
+                    }
+
+                    if (esDenegado || tieneMulta) {
                         c.setBackground(new java.awt.Color(255, 240, 240));
                         c.setForeground(new java.awt.Color(180, 20, 20));
                     } else {
