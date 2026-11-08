@@ -35,12 +35,13 @@ public class ControlAccesoTest {
     @BeforeEach
     void limpiarPruebasAnteriores() {
         try (Connection conn = Conexion.getConexion()) {
-            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM usuarios WHERE uid = ?")) {
-                pstmt.setString(1, UID_PRUEBA);
+            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM usuarios WHERE uid LIKE ?")) {
+                pstmt.setString(1, "TEST_%");
                 pstmt.executeUpdate();
             }
-            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM asistencias WHERE uid = ?")) {
-                pstmt.setString(1, UID_PRUEBA);
+            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM asistencias WHERE uid LIKE ? OR uid LIKE ?")) {
+                pstmt.setString(1, "TEST_%");
+                pstmt.setString(2, "UID_DESCONOCIDO%");
                 pstmt.executeUpdate();
             }
         } catch (Exception e) {
@@ -91,7 +92,7 @@ public class ControlAccesoTest {
     }
 
     @Test
-    @DisplayName("DAO: Operaciones CRUD de Empleados en SQLite")
+    @DisplayName("DAO: Operaciones CRUD de Empleados en MySQL")
     void testCrudEmpleadoDAO() {
         Empleado nuevo = new Empleado(UID_PRUEBA, "Ana Gomez", "0987654321", "Contabilidad", "Analista");
         boolean guardado = empleadoDAO.guardar(nuevo);
