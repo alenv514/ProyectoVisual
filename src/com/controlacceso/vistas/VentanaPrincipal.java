@@ -546,7 +546,7 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         lblFiltroTipo.setText("Tipo:");
         panelFiltrosHistorial.add(lblFiltroTipo);
 
-        cbFiltroTipo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "TODOS", "ENTRADA MAÑANA", "SALIDA MAÑANA", "ENTRADA TARDE", "SALIDA TARDE", "ENTRADA ADICIONAL", "ACCESO DENEGADO" }));
+        cbFiltroTipo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "TODOS", "ENTRADA MAÑANA", "SALIDA MAÑANA", "ENTRADA TARDE", "SALIDA TARDE", "ENTRADA ANTICIPADA", "ENTRADA ADICIONAL", "ACCESO DENEGADO" }));
         panelFiltrosHistorial.add(cbFiltroTipo);
 
         lblFiltroEstado.setText("Estado:");
