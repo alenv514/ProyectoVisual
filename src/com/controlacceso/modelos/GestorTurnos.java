@@ -65,7 +65,7 @@ public class GestorTurnos {
             } else if (!tieneSalidaTarde) {
                 return turnoTarde.evaluarSalida(horaActual);
             } else {
-                return new ResultadoCalculoTurno("ENTRADA ANTICIPADA", "20:00", 0, 0.0, "A TIEMPO ($0.00)");
+                return new ResultadoCalculoTurno("ENTRADA ANTICIPADA", "-", 0, 0.0, "A TIEMPO ($0.00)");
             }
         }
         // 4. De las 8:00 PM en adelante (20:00 en adelante)
