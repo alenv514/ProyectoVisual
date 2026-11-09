@@ -44,6 +44,8 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
     private JButton btnSesionAdmin;
     private String ultimoUidLeido = "";
     private JPanel panelAccionAdmin;
+    private JLabel lblAvisoEsperaAdmin;
+    private JButton btnAbrirLoginRapido;
     private JButton btnAutorizarPaso;
     private JButton btnDenegarPaso;
     private RegistroAsistencia registroPendiente = null;
@@ -98,13 +100,31 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         panelSuperior.revalidate();
 
         // Configurar panel de autorización para la 3ra marcación excepcional
-        panelAccionAdmin = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
+        panelAccionAdmin = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 6));
         panelAccionAdmin.setOpaque(false);
+
+        lblAvisoEsperaAdmin = new JLabel("[!] Acceso detenido: Se requiere autorización de Administrador.");
+        lblAvisoEsperaAdmin.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblAvisoEsperaAdmin.setForeground(Color.WHITE);
+
+        btnAbrirLoginRapido = new JButton("Iniciar Sesión Admin");
+        btnAbrirLoginRapido.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnAbrirLoginRapido.setBackground(new Color(41, 128, 185));
+        btnAbrirLoginRapido.setForeground(Color.WHITE);
+        btnAbrirLoginRapido.setOpaque(true);
+        btnAbrirLoginRapido.setContentAreaFilled(true);
+        btnAbrirLoginRapido.setBorderPainted(false);
+        btnAbrirLoginRapido.setFocusPainted(false);
+        btnAbrirLoginRapido.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnAbrirLoginRapido.addActionListener(e -> accionarBotonAdmin());
 
         btnAutorizarPaso = new JButton("✔ Autorizar Paso");
         btnAutorizarPaso.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnAutorizarPaso.setBackground(new Color(39, 174, 96));
         btnAutorizarPaso.setForeground(Color.WHITE);
+        btnAutorizarPaso.setOpaque(true);
+        btnAutorizarPaso.setContentAreaFilled(true);
+        btnAutorizarPaso.setBorderPainted(false);
         btnAutorizarPaso.setFocusPainted(false);
         btnAutorizarPaso.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnAutorizarPaso.addActionListener(e -> autorizarPasoPendiente());
@@ -113,10 +133,15 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         btnDenegarPaso.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnDenegarPaso.setBackground(new Color(192, 57, 43));
         btnDenegarPaso.setForeground(Color.WHITE);
+        btnDenegarPaso.setOpaque(true);
+        btnDenegarPaso.setContentAreaFilled(true);
+        btnDenegarPaso.setBorderPainted(false);
         btnDenegarPaso.setFocusPainted(false);
         btnDenegarPaso.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnDenegarPaso.addActionListener(e -> denegarPasoPendiente());
 
+        panelAccionAdmin.add(lblAvisoEsperaAdmin);
+        panelAccionAdmin.add(btnAbrirLoginRapido);
         panelAccionAdmin.add(btnAutorizarPaso);
         panelAccionAdmin.add(btnDenegarPaso);
         panelAccionAdmin.setVisible(false);
@@ -743,15 +768,35 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         lblMultaDetectada.setForeground(java.awt.Color.WHITE);
 
         panelEstadoAcceso.setBackground(new java.awt.Color(230, 126, 34)); // Ámbar / Naranja alerta
-        lblTituloResultado.setText("⚠ ESPERANDO AUTORIZACIÓN ADMIN");
-        if (panelAccionAdmin != null) {
-            panelAccionAdmin.setVisible(true);
-            panelEstadoAcceso.revalidate();
-            panelEstadoAcceso.repaint();
-        }
+        lblTituloResultado.setText("[!] ESPERANDO AUTORIZACIÓN ADMIN");
+        actualizarVisibilidadAccionAdmin();
         if (timerResetEstado != null) {
             timerResetEstado.stop();
         }
+    }
+
+    private void actualizarVisibilidadAccionAdmin() {
+        if (registroPendiente == null) {
+            if (panelAccionAdmin != null) panelAccionAdmin.setVisible(false);
+            return;
+        }
+
+        if (panelAccionAdmin == null) return;
+        panelAccionAdmin.setVisible(true);
+
+        if (adminAutenticado) {
+            lblAvisoEsperaAdmin.setVisible(false);
+            btnAbrirLoginRapido.setVisible(false);
+            btnAutorizarPaso.setVisible(true);
+            btnDenegarPaso.setVisible(true);
+        } else {
+            lblAvisoEsperaAdmin.setVisible(true);
+            btnAbrirLoginRapido.setVisible(true);
+            btnAutorizarPaso.setVisible(false);
+            btnDenegarPaso.setVisible(false);
+        }
+        panelEstadoAcceso.revalidate();
+        panelEstadoAcceso.repaint();
     }
 
     private void autorizarPasoPendiente() {
@@ -892,11 +937,17 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
             if (dlg.isAutenticado()) {
                 adminAutenticado = true;
                 actualizarVisibilidadTabsAdmin();
-                tabbedPane.setSelectedComponent(panelPersonal);
+                actualizarVisibilidadAccionAdmin();
+                if (registroPendiente != null) {
+                    tabbedPane.setSelectedComponent(panelMonitoreo);
+                } else {
+                    tabbedPane.setSelectedComponent(panelPersonal);
+                }
             }
         } else {
             adminAutenticado = false;
             actualizarVisibilidadTabsAdmin();
+            actualizarVisibilidadAccionAdmin();
         }
     }
 
