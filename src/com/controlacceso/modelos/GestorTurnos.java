@@ -47,15 +47,17 @@ public class GestorTurnos {
                 return turnoManana.evaluarSalida(horaActual);
             } else {
                 // Ya completó sus 2 marcas de la mañana y vuelve a ingresar
-                return new ResultadoCalculoTurno("ENTRADA ANTICIPADA", "14:00", 0, 0.0, "A TIEMPO ($0.00)");
+                return new ResultadoCalculoTurno("REQUIERE AUTORIZACIÓN ADMIN", "-", 0, 0.0, "LÍMITE ALCANZADO: ESPERE AL ADMIN", true);
             }
         }
         // 2. Horario de 1:00 PM a 2:00 PM (13:00 a 14:00)
         else if (horaActual.isBefore(LocalTime.of(14, 0))) {
             if (tieneEntradaManana && !tieneSalidaManana) {
                 return turnoManana.evaluarSalida(horaActual);
-            } else {
+            } else if (!tieneEntradaTarde) {
                 return new ResultadoCalculoTurno("ENTRADA ANTICIPADA", "14:00", 0, 0.0, "A TIEMPO ($0.00)");
+            } else {
+                return new ResultadoCalculoTurno("REQUIERE AUTORIZACIÓN ADMIN", "-", 0, 0.0, "LÍMITE ALCANZADO: ESPERE AL ADMIN", true);
             }
         }
         // 3. Horario de la Tarde (14:00 a 20:00 / 2:00 PM a 8:00 PM)
@@ -65,15 +67,18 @@ public class GestorTurnos {
             } else if (!tieneSalidaTarde) {
                 return turnoTarde.evaluarSalida(horaActual);
             } else {
-                return new ResultadoCalculoTurno("ENTRADA ANTICIPADA", "-", 0, 0.0, "A TIEMPO ($0.00)");
+                // Ya completó Entrada y Salida de la tarde y vuelve a pasar
+                return new ResultadoCalculoTurno("REQUIERE AUTORIZACIÓN ADMIN", "-", 0, 0.0, "LÍMITE ALCANZADO: ESPERE AL ADMIN", true);
             }
         }
         // 4. De las 8:00 PM en adelante (20:00 en adelante)
         else {
             if (tieneEntradaTarde && !tieneSalidaTarde) {
                 return turnoTarde.evaluarSalida(horaActual);
-            } else {
+            } else if (!tieneEntradaTarde) {
                 return new ResultadoCalculoTurno("ENTRADA ANTICIPADA", "-", 0, 0.0, "A TIEMPO ($0.00)");
+            } else {
+                return new ResultadoCalculoTurno("REQUIERE AUTORIZACIÓN ADMIN", "-", 0, 0.0, "LÍMITE ALCANZADO: ESPERE AL ADMIN", true);
             }
         }
     }

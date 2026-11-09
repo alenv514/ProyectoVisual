@@ -94,6 +94,12 @@ public class ControladorAcceso {
             registro.setMinutosDiferencia(calc.getMinutosDiferencia());
             registro.setMulta(calc.getMulta());
             registro.setDetallePuntualidad(calc.getDetallePuntualidad());
+
+            if (calc.isRequiereAutorizacionAdmin()) {
+                registro.setEstado("EN ESPERA DE ADMIN");
+            } else {
+                registro.setEstado("ACCESO PERMITIDO");
+            }
         } else {
             registro.setUsuarioId(null);
             registro.setNombre("NO REGISTRADO");
@@ -106,15 +112,44 @@ public class ControladorAcceso {
             registro.setDetallePuntualidad("TARJETA NO VALIDA");
         }
 
-        // Guardar en la base de datos
-        asistenciaDAO.registrar(registro);
-
-        // Responder al ESP32 para activar LEDs o Buzzer de confirmación
-        if (serialManager.estaConectado()) {
-            serialManager.enviarRespuesta(accesoPermitido, registro.getNombre());
+        // Si no está en espera de admin, guardar y responder al ESP32 normalmente
+        if (!"EN ESPERA DE ADMIN".equalsIgnoreCase(registro.getEstado())) {
+            asistenciaDAO.registrar(registro);
+            if (serialManager != null && serialManager.estaConectado()) {
+                serialManager.enviarRespuesta(accesoPermitido, registro.getNombre());
+            }
+        } else {
+            // No se abre la puerta todavía: se envía aviso de advertencia al ESP32
+            if (serialManager != null && serialManager.estaConectado()) {
+                serialManager.enviarComando("WARN:" + registro.getNombre());
+            }
         }
 
         return registro;
+    }
+
+    public void autorizarAccesoExcepcional(RegistroAsistencia reg) {
+        if (reg == null) return;
+        reg.setEstado("ACCESO PERMITIDO");
+        reg.setTipo("REINGRESO AUTORIZADO");
+        reg.setDetallePuntualidad("AUTORIZADO POR ADMINISTRADOR");
+        reg.setMulta(0.0);
+        asistenciaDAO.registrar(reg);
+        if (serialManager != null && serialManager.estaConectado()) {
+            serialManager.enviarRespuesta(true, reg.getNombre());
+        }
+    }
+
+    public void denegarAccesoExcepcional(RegistroAsistencia reg) {
+        if (reg == null) return;
+        reg.setEstado("ACCESO DENEGADO");
+        reg.setTipo("REINGRESO DENEGADO");
+        reg.setDetallePuntualidad("DENEGADO POR ADMINISTRADOR");
+        reg.setMulta(0.0);
+        asistenciaDAO.registrar(reg);
+        if (serialManager != null && serialManager.estaConectado()) {
+            serialManager.enviarRespuesta(false, reg.getNombre());
+        }
     }
 
     // =========================================================================

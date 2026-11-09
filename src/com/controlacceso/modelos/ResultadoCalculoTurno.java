@@ -10,6 +10,7 @@ public class ResultadoCalculoTurno {
     private int minutosDiferencia;
     private double multa;
     private String detallePuntualidad;
+    private boolean requiereAutorizacionAdmin;
 
     public ResultadoCalculoTurno() {
         this.tipo = "-";
@@ -17,14 +18,28 @@ public class ResultadoCalculoTurno {
         this.minutosDiferencia = 0;
         this.multa = 0.0;
         this.detallePuntualidad = "-";
+        this.requiereAutorizacionAdmin = false;
     }
 
     public ResultadoCalculoTurno(String tipo, String horarioEsperado, int minutosDiferencia, double multa, String detallePuntualidad) {
+        this(tipo, horarioEsperado, minutosDiferencia, multa, detallePuntualidad, false);
+    }
+
+    public ResultadoCalculoTurno(String tipo, String horarioEsperado, int minutosDiferencia, double multa, String detallePuntualidad, boolean requiereAutorizacionAdmin) {
         this.tipo = tipo;
         this.horarioEsperado = horarioEsperado;
         this.minutosDiferencia = minutosDiferencia;
         this.multa = multa;
         this.detallePuntualidad = detallePuntualidad;
+        this.requiereAutorizacionAdmin = requiereAutorizacionAdmin;
+    }
+
+    public boolean isRequiereAutorizacionAdmin() {
+        return requiereAutorizacionAdmin;
+    }
+
+    public void setRequiereAutorizacionAdmin(boolean requiereAutorizacionAdmin) {
+        this.requiereAutorizacionAdmin = requiereAutorizacionAdmin;
     }
 
     public String getTipo() {

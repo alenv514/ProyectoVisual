@@ -24,7 +24,7 @@ import java.util.Map;
  * JFrame Form principal para NetBeans Matisse
  * Control de Acceso y Asistencia con RFID
  *
- * @author Antigravity
+ * @author Alen
  */
 public class VentanaPrincipal extends javax.swing.JFrame implements SerialListener {
 
@@ -43,6 +43,10 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
     private boolean adminAutenticado = false;
     private JButton btnSesionAdmin;
     private String ultimoUidLeido = "";
+    private JPanel panelAccionAdmin;
+    private JButton btnAutorizarPaso;
+    private JButton btnDenegarPaso;
+    private RegistroAsistencia registroPendiente = null;
 
     /**
      * Creates new form VentanaPrincipal
@@ -92,6 +96,32 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         panelDerechoSuperior.add(btnSesionAdmin);
         panelSuperior.add(panelDerechoSuperior, BorderLayout.LINE_END);
         panelSuperior.revalidate();
+
+        // Configurar panel de autorización para la 3ra marcación excepcional
+        panelAccionAdmin = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
+        panelAccionAdmin.setOpaque(false);
+
+        btnAutorizarPaso = new JButton("✔ Autorizar Paso");
+        btnAutorizarPaso.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnAutorizarPaso.setBackground(new Color(39, 174, 96));
+        btnAutorizarPaso.setForeground(Color.WHITE);
+        btnAutorizarPaso.setFocusPainted(false);
+        btnAutorizarPaso.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnAutorizarPaso.addActionListener(e -> autorizarPasoPendiente());
+
+        btnDenegarPaso = new JButton("✖ Denegar Paso");
+        btnDenegarPaso.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnDenegarPaso.setBackground(new Color(192, 57, 43));
+        btnDenegarPaso.setForeground(Color.WHITE);
+        btnDenegarPaso.setFocusPainted(false);
+        btnDenegarPaso.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnDenegarPaso.addActionListener(e -> denegarPasoPendiente());
+
+        panelAccionAdmin.add(btnAutorizarPaso);
+        panelAccionAdmin.add(btnDenegarPaso);
+        panelAccionAdmin.setVisible(false);
+
+        panelEstadoAcceso.add(panelAccionAdmin, BorderLayout.PAGE_END);
 
         iniciarTimerRelojSistema();
 
@@ -688,14 +718,86 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
 
         RegistroAsistencia reg = controlador.procesarLecturaRfid(uidLimpio);
         if (reg != null) {
-            boolean accesoPermitido = "ACCESO PERMITIDO".equalsIgnoreCase(reg.getEstado());
-            mostrarResultadoEnPantalla(reg, accesoPermitido);
-            agregarFilaReciente(reg);
-            cargarTablaHistorial();
+            if ("EN ESPERA DE ADMIN".equalsIgnoreCase(reg.getEstado())) {
+                registroPendiente = reg;
+                mostrarResultadoEnEsperaAdmin(reg);
+            } else {
+                registroPendiente = null;
+                if (panelAccionAdmin != null) panelAccionAdmin.setVisible(false);
+                boolean accesoPermitido = "ACCESO PERMITIDO".equalsIgnoreCase(reg.getEstado());
+                mostrarResultadoEnPantalla(reg, accesoPermitido);
+                agregarFilaReciente(reg);
+                cargarTablaHistorial();
+            }
+        }
+    }
+
+    private void mostrarResultadoEnEsperaAdmin(RegistroAsistencia reg) {
+        lblNombreDetectado.setText(reg.getNombre());
+        lblUidDetectado.setText(reg.getUid());
+        lblHoraDetectada.setText(reg.getFechaHora().length() >= 19 ? reg.getFechaHora().substring(11) : reg.getFechaHora());
+        lblTipoDetectado.setText(reg.getTipo());
+        lblHorarioOficialDetectado.setText(reg.getHorarioEsperado());
+        lblPuntualidadDetectada.setText(reg.getDetallePuntualidad());
+        lblMultaDetectada.setText("EN ESPERA");
+        lblMultaDetectada.setForeground(java.awt.Color.WHITE);
+
+        panelEstadoAcceso.setBackground(new java.awt.Color(230, 126, 34)); // Ámbar / Naranja alerta
+        lblTituloResultado.setText("⚠ ESPERANDO AUTORIZACIÓN ADMIN");
+        if (panelAccionAdmin != null) {
+            panelAccionAdmin.setVisible(true);
+            panelEstadoAcceso.revalidate();
+            panelEstadoAcceso.repaint();
+        }
+        if (timerResetEstado != null) {
+            timerResetEstado.stop();
+        }
+    }
+
+    private void autorizarPasoPendiente() {
+        if (registroPendiente == null) return;
+        controlador.autorizarAccesoExcepcional(registroPendiente);
+        if (panelAccionAdmin != null) {
+            panelAccionAdmin.setVisible(false);
+        }
+        panelEstadoAcceso.setBackground(new java.awt.Color(39, 174, 96));
+        lblTituloResultado.setText("ACCESO AUTORIZADO POR ADMIN");
+        lblTipoDetectado.setText(registroPendiente.getTipo());
+        lblPuntualidadDetectada.setText(registroPendiente.getDetallePuntualidad());
+        lblMultaDetectada.setText("$0.00 (Sin multa)");
+        lblMultaDetectada.setForeground(new java.awt.Color(190, 255, 190));
+        agregarFilaReciente(registroPendiente);
+        cargarTablaHistorial();
+        registroPendiente = null;
+        if (timerResetEstado != null) {
+            timerResetEstado.restart();
+        }
+    }
+
+    private void denegarPasoPendiente() {
+        if (registroPendiente == null) return;
+        controlador.denegarAccesoExcepcional(registroPendiente);
+        if (panelAccionAdmin != null) {
+            panelAccionAdmin.setVisible(false);
+        }
+        panelEstadoAcceso.setBackground(new java.awt.Color(192, 57, 43));
+        lblTituloResultado.setText("ACCESO DENEGADO POR ADMIN");
+        lblTipoDetectado.setText(registroPendiente.getTipo());
+        lblPuntualidadDetectada.setText(registroPendiente.getDetallePuntualidad());
+        lblMultaDetectada.setText("-");
+        lblMultaDetectada.setForeground(java.awt.Color.WHITE);
+        agregarFilaReciente(registroPendiente);
+        cargarTablaHistorial();
+        registroPendiente = null;
+        if (timerResetEstado != null) {
+            timerResetEstado.restart();
         }
     }
 
     private void mostrarResultadoEnPantalla(RegistroAsistencia reg, boolean permitido) {
+        if (panelAccionAdmin != null) {
+            panelAccionAdmin.setVisible(false);
+        }
         lblNombreDetectado.setText(reg.getNombre());
         lblUidDetectado.setText(reg.getUid());
         lblHoraDetectada.setText(reg.getFechaHora().length() >= 19 ? reg.getFechaHora().substring(11) : reg.getFechaHora());
@@ -730,8 +832,13 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
 
     private void iniciarTimerResetEstado() {
         timerResetEstado = new Timer(5000, e -> {
-            panelEstadoAcceso.setBackground(new java.awt.Color(52, 73, 94));
-            lblTituloResultado.setText("ESPERANDO LECTURA RFID");
+            if (registroPendiente == null) {
+                if (panelAccionAdmin != null) {
+                    panelAccionAdmin.setVisible(false);
+                }
+                panelEstadoAcceso.setBackground(new java.awt.Color(52, 73, 94));
+                lblTituloResultado.setText("ESPERANDO LECTURA RFID");
+            }
         });
         timerResetEstado.setRepeats(false);
     }

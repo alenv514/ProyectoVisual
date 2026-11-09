@@ -197,4 +197,32 @@ public class ControlAccesoTest {
             ps.executeUpdate();
         } catch (Exception ignored) {}
     }
+
+    @Test
+    @DisplayName("Seguridad: Tercera marcación requiere autorización del Administrador")
+    void testTerceraMarcacionRequiereAutorizacionAdmin() {
+        Empleado emp = new Empleado(UID_PRUEBA, "Seguridad Test User", "0102030405", "Seguridad", "Inspector");
+        empleadoDAO.guardar(emp);
+
+        // Pase 1: Entrada
+        RegistroAsistencia r1 = controlador.procesarLecturaRfid(UID_PRUEBA);
+        assertNotNull(r1);
+        assertEquals("ACCESO PERMITIDO", r1.getEstado());
+
+        // Pase 2: Salida
+        RegistroAsistencia r2 = controlador.procesarLecturaRfid(UID_PRUEBA);
+        assertNotNull(r2);
+        assertEquals("ACCESO PERMITIDO", r2.getEstado());
+
+        // Pase 3: Tercer intento -> Requiere autorización del Administrador
+        RegistroAsistencia r3 = controlador.procesarLecturaRfid(UID_PRUEBA);
+        assertNotNull(r3);
+        assertEquals("EN ESPERA DE ADMIN", r3.getEstado());
+        assertEquals("REQUIERE AUTORIZACIÓN ADMIN", r3.getTipo());
+
+        // Admin autoriza el reingreso
+        controlador.autorizarAccesoExcepcional(r3);
+        assertEquals("ACCESO PERMITIDO", r3.getEstado());
+        assertEquals("REINGRESO AUTORIZADO", r3.getTipo());
+    }
 }
