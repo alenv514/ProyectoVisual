@@ -118,7 +118,7 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         btnAbrirLoginRapido.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnAbrirLoginRapido.addActionListener(e -> accionarBotonAdmin());
 
-        btnAutorizarPaso = new JButton("✔ Autorizar Paso");
+        btnAutorizarPaso = new JButton("📹 Verificar con Cámara y Autorizar");
         btnAutorizarPaso.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnAutorizarPaso.setBackground(new Color(39, 174, 96));
         btnAutorizarPaso.setForeground(Color.WHITE);
@@ -801,21 +801,30 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
 
     private void autorizarPasoPendiente() {
         if (registroPendiente == null) return;
-        controlador.autorizarAccesoExcepcional(registroPendiente);
-        if (panelAccionAdmin != null) {
-            panelAccionAdmin.setVisible(false);
-        }
-        panelEstadoAcceso.setBackground(new java.awt.Color(39, 174, 96));
-        lblTituloResultado.setText("ACCESO AUTORIZADO POR ADMIN");
-        lblTipoDetectado.setText(registroPendiente.getTipo());
-        lblPuntualidadDetectada.setText(registroPendiente.getDetallePuntualidad());
-        lblMultaDetectada.setText("$0.00 (Sin multa)");
-        lblMultaDetectada.setForeground(new java.awt.Color(190, 255, 190));
-        agregarFilaReciente(registroPendiente);
-        cargarTablaHistorial();
-        registroPendiente = null;
-        if (timerResetEstado != null) {
-            timerResetEstado.restart();
+
+        Empleado emp = controlador.buscarEmpleadoPorUid(registroPendiente.getUid());
+        DialogoVerificacionFacial dlg = new DialogoVerificacionFacial(this, registroPendiente, emp);
+        dlg.setVisible(true);
+
+        if (dlg.isAutorizado()) {
+            controlador.autorizarAccesoExcepcional(registroPendiente);
+            if (panelAccionAdmin != null) {
+                panelAccionAdmin.setVisible(false);
+            }
+            panelEstadoAcceso.setBackground(new java.awt.Color(39, 174, 96));
+            lblTituloResultado.setText("ACCESO AUTORIZADO POR ADMIN");
+            lblTipoDetectado.setText(registroPendiente.getTipo());
+            lblPuntualidadDetectada.setText(registroPendiente.getDetallePuntualidad());
+            lblMultaDetectada.setText("$0.00 (Sin multa)");
+            lblMultaDetectada.setForeground(new java.awt.Color(190, 255, 190));
+            agregarFilaReciente(registroPendiente);
+            cargarTablaHistorial();
+            registroPendiente = null;
+            if (timerResetEstado != null) {
+                timerResetEstado.restart();
+            }
+        } else if (dlg.isRechazado()) {
+            denegarPasoPendiente();
         }
     }
 
