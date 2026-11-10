@@ -180,6 +180,10 @@ public class ControladorAcceso {
     // SERVICIOS PARA HISTORIAL Y CONSULTAS
     // =========================================================================
 
+    public List<RegistroAsistencia> listarAsistenciasHoy() {
+        return asistenciaDAO.listarHoy();
+    }
+
     public List<RegistroAsistencia> listarAsistenciasPorFiltros(String fecha, String nombre) {
         return asistenciaDAO.listarPorFiltros(fecha, nombre);
     }

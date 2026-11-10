@@ -78,6 +78,7 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
 
         cargarTablaUsuarios();
         cargarTablaHistorial();
+        cargarTablaAccesosRecientes();
         iniciarTimerResetEstado();
 
         // Configurar reloj independiente y botón admin en el panel superior
@@ -957,6 +958,26 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
             adminAutenticado = false;
             actualizarVisibilidadTabsAdmin();
             actualizarVisibilidadAccionAdmin();
+        }
+    }
+
+    private void cargarTablaAccesosRecientes() {
+        if (modeloAccesosRecientes == null) return;
+        modeloAccesosRecientes.setRowCount(0);
+        List<RegistroAsistencia> lista = controlador.listarAsistenciasHoy();
+        if (lista != null) {
+            for (RegistroAsistencia r : lista) {
+                String horaCorta = r.getFechaHora().length() >= 19 ? r.getFechaHora().substring(11) : r.getFechaHora();
+                String multaStr = r.getMulta() > 0 ? String.format(Locale.US, "$%.2f", r.getMulta()) : "$0.00";
+                modeloAccesosRecientes.addRow(new Object[]{
+                    horaCorta,
+                    r.getNombre(),
+                    r.getTipo(),
+                    r.getHorarioEsperado(),
+                    r.getDetallePuntualidad(),
+                    multaStr
+                });
+            }
         }
     }
 

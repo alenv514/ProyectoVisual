@@ -638,7 +638,7 @@
                           <Font name="Segoe UI" size="12" style="1"/>
                         </Property>
                         <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-                          <Color blue="81" green="4c" red="0f" type="rgb"/>
+                          <Color blue="81" green="4c" red="f" type="rgb"/>
                         </Property>
                         <Property name="text" type="java.lang.String" value="Guardar / Actualizar"/>
                       </Properties>
@@ -881,7 +881,7 @@
                       <Font name="Segoe UI" size="12" style="1"/>
                     </Property>
                     <Property name="foreground" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
-                      <Color blue="81" green="4c" red="0f" type="rgb"/>
+                      <Color blue="81" green="4c" red="f" type="rgb"/>
                     </Property>
                     <Property name="text" type="java.lang.String" value="Generar Reporte Jasper (PDF)"/>
                   </Properties>
