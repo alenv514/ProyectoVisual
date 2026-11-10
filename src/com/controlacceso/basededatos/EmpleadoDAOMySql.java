@@ -23,7 +23,7 @@ public class EmpleadoDAOMySql implements EmpleadoDAO {
 
     @Override
     public boolean guardar(Empleado empleado) {
-        String sql = "INSERT INTO usuarios (uid, nombre, cedula, departamento, cargo, activo, creado_en) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO usuarios (uid, nombre, cedula, departamento, cargo, activo, creado_en, foto) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = Conexion.getConexion();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
@@ -34,6 +34,7 @@ public class EmpleadoDAOMySql implements EmpleadoDAO {
             pstmt.setString(5, empleado.getCargo() != null ? empleado.getCargo().trim() : "");
             pstmt.setInt(6, empleado.isActivo() ? 1 : 0);
             pstmt.setString(7, RelojSistema.ahora().format(FORMATTER));
+            pstmt.setString(8, empleado.getFoto());
 
             int filas = pstmt.executeUpdate();
             if (filas > 0) {
@@ -53,7 +54,7 @@ public class EmpleadoDAOMySql implements EmpleadoDAO {
 
     @Override
     public boolean actualizar(Empleado empleado) {
-        String sql = "UPDATE usuarios SET uid = ?, nombre = ?, cedula = ?, departamento = ?, cargo = ?, activo = ? WHERE id = ?";
+        String sql = "UPDATE usuarios SET uid = ?, nombre = ?, cedula = ?, departamento = ?, cargo = ?, activo = ?, foto = ? WHERE id = ?";
         try (Connection conn = Conexion.getConexion();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -63,7 +64,8 @@ public class EmpleadoDAOMySql implements EmpleadoDAO {
             pstmt.setString(4, empleado.getDepartamento() != null ? empleado.getDepartamento().trim() : "");
             pstmt.setString(5, empleado.getCargo() != null ? empleado.getCargo().trim() : "");
             pstmt.setInt(6, empleado.isActivo() ? 1 : 0);
-            pstmt.setInt(7, empleado.getId());
+            pstmt.setString(7, empleado.getFoto());
+            pstmt.setInt(8, empleado.getId());
 
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -146,6 +148,7 @@ public class EmpleadoDAOMySql implements EmpleadoDAO {
         e.setCargo(rs.getString("cargo"));
         e.setActivo(rs.getInt("activo") == 1);
         e.setCreadoEn(rs.getString("creado_en"));
+        e.setFoto(rs.getString("foto"));
         return e;
     }
 }

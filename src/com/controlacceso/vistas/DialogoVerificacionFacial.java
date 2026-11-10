@@ -92,30 +92,59 @@ public class DialogoVerificacionFacial extends JDialog {
         lblTituloReg.setForeground(new Color(27, 54, 93));
         panelIzquierdo.add(lblTituloReg, BorderLayout.NORTH);
 
-        // Avatar gráfico con silueta e iniciales
+        // Avatar gráfico con silueta e iniciales, o Foto Real si está registrada
         JPanel panelAvatar = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                int size = 110;
-                int x = (getWidth() - size) / 2;
-                int y = 10;
-                g2.setColor(new Color(41, 128, 185));
-                g2.fillOval(x, y, size, size);
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
-                g2.setColor(Color.WHITE);
-                g2.setFont(new Font("Segoe UI", Font.BOLD, 36));
-                String iniciales = obtenerIniciales(registro != null ? registro.getNombre() : "U");
-                FontMetrics fm = g2.getFontMetrics();
-                int tx = x + (size - fm.stringWidth(iniciales)) / 2;
-                int ty = y + ((size - fm.getHeight()) / 2) + fm.getAscent();
-                g2.drawString(iniciales, tx, ty);
+                BufferedImage fotoReal = null;
+                if (empleado != null && empleado.getFoto() != null && !empleado.getFoto().isBlank()) {
+                    File f = new File(empleado.getFoto());
+                    if (f.exists()) {
+                        try {
+                            fotoReal = ImageIO.read(f);
+                        } catch (Exception ignored) {}
+                    }
+                }
+
+                int w = 125;
+                int h = 135;
+                int x = (getWidth() - w) / 2;
+                int y = 5;
+
+                if (fotoReal != null) {
+                    g2.setColor(new Color(225, 230, 240));
+                    g2.fillRoundRect(x - 2, y - 2, w + 4, h + 4, 16, 16);
+                    Shape clipOriginal = g2.getClip();
+                    g2.clip(new java.awt.geom.RoundRectangle2D.Float(x, y, w, h, 14, 14));
+                    g2.drawImage(fotoReal, x, y, w, h, null);
+                    g2.setClip(clipOriginal);
+                    g2.setColor(new Color(41, 128, 185));
+                    g2.setStroke(new BasicStroke(2f));
+                    g2.drawRoundRect(x, y, w, h, 14, 14);
+                } else {
+                    int size = 110;
+                    int cx = (getWidth() - size) / 2;
+                    int cy = 10;
+                    g2.setColor(new Color(41, 128, 185));
+                    g2.fillOval(cx, cy, size, size);
+
+                    g2.setColor(Color.WHITE);
+                    g2.setFont(new Font("Segoe UI", Font.BOLD, 36));
+                    String iniciales = obtenerIniciales(registro != null ? registro.getNombre() : "U");
+                    FontMetrics fm = g2.getFontMetrics();
+                    int tx = cx + (size - fm.stringWidth(iniciales)) / 2;
+                    int ty = cy + ((size - fm.getHeight()) / 2) + fm.getAscent();
+                    g2.drawString(iniciales, tx, ty);
+                }
                 g2.dispose();
             }
         };
-        panelAvatar.setPreferredSize(new Dimension(130, 130));
+        panelAvatar.setPreferredSize(new Dimension(140, 150));
         panelAvatar.setOpaque(false);
 
         // Tabla de datos del titular

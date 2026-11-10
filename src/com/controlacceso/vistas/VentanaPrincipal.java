@@ -7,12 +7,17 @@ import com.controlacceso.modelos.Empleado;
 import com.controlacceso.modelos.RegistroAsistencia;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -49,6 +54,11 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
     private JButton btnAutorizarPaso;
     private JButton btnDenegarPaso;
     private RegistroAsistencia registroPendiente = null;
+    private JLabel lblPreviewFoto;
+    private JButton btnSubirFoto;
+    private JButton btnQuitarFoto;
+    private File archivoFotoSeleccionada = null;
+    private boolean fotoModificada = false;
 
     /**
      * Creates new form VentanaPrincipal
@@ -148,6 +158,18 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         panelAccionAdmin.setVisible(false);
 
         panelEstadoAcceso.add(panelAccionAdmin, BorderLayout.PAGE_END);
+
+        // Configurar panel de foto en el formulario de personal
+        panelFormPersonal.remove(panelCamposForm);
+        panelFormPersonal.setPreferredSize(new Dimension(420, 0));
+
+        JPanel panelSuperiorForm = new JPanel(new BorderLayout(0, 10));
+        panelSuperiorForm.setOpaque(false);
+        panelSuperiorForm.add(crearPanelFotoEmpleado(), BorderLayout.NORTH);
+        panelSuperiorForm.add(panelCamposForm, BorderLayout.CENTER);
+
+        panelFormPersonal.add(panelSuperiorForm, BorderLayout.PAGE_START);
+        panelFormPersonal.revalidate();
 
         iniciarTimerRelojSistema();
 
@@ -998,8 +1020,116 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
     }
 
     // =========================================================================
-    // MÉTODOS CRUD USUARIOS
+    // MÉTODOS CRUD USUARIOS Y GESTIÓN DE FOTO
     // =========================================================================
+    private JPanel crearPanelFotoEmpleado() {
+        JPanel panelFoto = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
+        panelFoto.setOpaque(false);
+
+        lblPreviewFoto = new JLabel("", SwingConstants.CENTER) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (getIcon() == null) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(new Color(150, 160, 175));
+                    g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                    FontMetrics fm = g2.getFontMetrics();
+                    String t = "📷 Sin Foto";
+                    int tx = (getWidth() - fm.stringWidth(t)) / 2;
+                    int ty = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+                    g2.drawString(t, tx, ty);
+                    g2.dispose();
+                }
+            }
+        };
+        lblPreviewFoto.setPreferredSize(new Dimension(105, 115));
+        lblPreviewFoto.setOpaque(true);
+        lblPreviewFoto.setBackground(new Color(240, 244, 248));
+        lblPreviewFoto.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 210, 225), 1, true),
+                BorderFactory.createEmptyBorder(2, 2, 2, 2)
+        ));
+
+        JPanel panelAccionesFoto = new JPanel(new GridLayout(2, 1, 0, 8));
+        panelAccionesFoto.setOpaque(false);
+
+        btnSubirFoto = new JButton("📁 Subir Foto");
+        btnSubirFoto.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnSubirFoto.setBackground(new Color(41, 128, 185));
+        btnSubirFoto.setForeground(Color.WHITE);
+        btnSubirFoto.setOpaque(true);
+        btnSubirFoto.setContentAreaFilled(true);
+        btnSubirFoto.setBorderPainted(false);
+        btnSubirFoto.setFocusPainted(false);
+        btnSubirFoto.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnSubirFoto.addActionListener(e -> seleccionarFotoEmpleado());
+
+        btnQuitarFoto = new JButton("✖ Quitar");
+        btnQuitarFoto.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btnQuitarFoto.setBackground(new Color(230, 235, 240));
+        btnQuitarFoto.setForeground(new Color(100, 110, 120));
+        btnQuitarFoto.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnQuitarFoto.addActionListener(e -> quitarFotoEmpleado());
+
+        panelAccionesFoto.add(btnSubirFoto);
+        panelAccionesFoto.add(btnQuitarFoto);
+
+        panelFoto.add(lblPreviewFoto);
+        panelFoto.add(panelAccionesFoto);
+        return panelFoto;
+    }
+
+    private void seleccionarFotoEmpleado() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Seleccionar Foto del Empleado");
+        chooser.setAcceptAllFileFilterUsed(false);
+        chooser.addChoosableFileFilter(new FileNameExtensionFilter("Archivos de Imagen (*.jpg, *.jpeg, *.png)", "jpg", "jpeg", "png"));
+
+        int res = chooser.showOpenDialog(this);
+        if (res == JFileChooser.APPROVE_OPTION) {
+            File seleccionado = chooser.getSelectedFile();
+            if (seleccionado != null && seleccionado.exists()) {
+                archivoFotoSeleccionada = seleccionado;
+                fotoModificada = true;
+                mostrarFotoEnPreview(seleccionado);
+            }
+        }
+    }
+
+    private void quitarFotoEmpleado() {
+        archivoFotoSeleccionada = null;
+        fotoModificada = true;
+        if (lblPreviewFoto != null) {
+            lblPreviewFoto.setIcon(null);
+            lblPreviewFoto.setText("");
+            lblPreviewFoto.repaint();
+        }
+    }
+
+    private void mostrarFotoEnPreview(File archivo) {
+        if (lblPreviewFoto == null) return;
+        if (archivo == null || !archivo.exists()) {
+            lblPreviewFoto.setIcon(null);
+            lblPreviewFoto.setText("");
+            lblPreviewFoto.repaint();
+            return;
+        }
+        try {
+            BufferedImage img = ImageIO.read(archivo);
+            if (img != null) {
+                int w = lblPreviewFoto.getPreferredSize().width - 6;
+                int h = lblPreviewFoto.getPreferredSize().height - 6;
+                Image scaled = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+                lblPreviewFoto.setIcon(new ImageIcon(scaled));
+                lblPreviewFoto.setText(null);
+            }
+        } catch (Exception ex) {
+            System.err.println("Error al cargar preview de foto: " + ex.getMessage());
+        }
+    }
+
     private void guardarUsuario() {
         String uid = txtRegUid.getText().trim().toUpperCase();
         String nombre = txtRegNombre.getText().trim();
@@ -1016,7 +1146,34 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         Empleado empleado = new Empleado(uid, nombre, cedula, depto, cargo);
         empleado.setActivo(activo);
 
+        // Guardar o mantener la foto del empleado en fotos_empleados/
+        File dirFotos = new File("fotos_empleados");
+        if (!dirFotos.exists()) {
+            dirFotos.mkdirs();
+        }
+
         Empleado existente = controlador.buscarEmpleadoPorUid(uid);
+        String rutaFotoFinal = (existente != null) ? existente.getFoto() : null;
+
+        if (fotoModificada) {
+            if (archivoFotoSeleccionada != null) {
+                String nombreOriginal = archivoFotoSeleccionada.getName().toLowerCase();
+                String ext = nombreOriginal.endsWith(".png") ? "png" : "jpg";
+                String nuevoNombre = uid + "." + ext;
+                File archivoDestino = new File(dirFotos, nuevoNombre);
+                try {
+                    Files.copy(archivoFotoSeleccionada.toPath(), archivoDestino.toPath(),
+                            StandardCopyOption.REPLACE_EXISTING);
+                    rutaFotoFinal = "fotos_empleados/" + nuevoNombre;
+                } catch (Exception ex) {
+                    System.err.println("Error al guardar archivo de foto: " + ex.getMessage());
+                }
+            } else {
+                rutaFotoFinal = null;
+            }
+        }
+        empleado.setFoto(rutaFotoFinal);
+
         boolean exito;
         if (existente != null) {
             empleado.setId(existente.getId());
@@ -1050,6 +1207,11 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         if (confirm == JOptionPane.YES_OPTION) {
             Empleado existente = controlador.buscarEmpleadoPorUid(uid);
             if (existente != null && controlador.eliminarEmpleado(existente.getId())) {
+                if (existente.getFoto() != null) {
+                    try {
+                        new File(existente.getFoto()).delete();
+                    } catch (Exception ignored) {}
+                }
                 JOptionPane.showMessageDialog(this, "Empleado eliminado.");
                 limpiarFormularioUsuario();
                 cargarTablaUsuarios();
@@ -1066,6 +1228,8 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         txtRegDepto.setText("");
         txtRegCargo.setText("");
         chkRegActivo.setSelected(true);
+        quitarFotoEmpleado();
+        fotoModificada = false;
         tablaUsuarios.clearSelection();
     }
 
@@ -1092,13 +1256,31 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
     private void cargarUsuarioSeleccionadoEnFormulario() {
         int fila = tablaUsuarios.getSelectedRow();
         if (fila >= 0) {
-            txtRegUid.setText((String) modeloUsuarios.getValueAt(fila, 1));
+            String uid = (String) modeloUsuarios.getValueAt(fila, 1);
+            txtRegUid.setText(uid);
             txtRegNombre.setText((String) modeloUsuarios.getValueAt(fila, 2));
             txtRegCedula.setText((String) modeloUsuarios.getValueAt(fila, 3));
             txtRegDepto.setText((String) modeloUsuarios.getValueAt(fila, 4));
             txtRegCargo.setText((String) modeloUsuarios.getValueAt(fila, 5));
             String activo = (String) modeloUsuarios.getValueAt(fila, 6);
             chkRegActivo.setSelected("Sí".equals(activo));
+
+            archivoFotoSeleccionada = null;
+            fotoModificada = false;
+
+            Empleado emp = controlador.buscarEmpleadoPorUid(uid);
+            if (emp != null && emp.getFoto() != null && !emp.getFoto().isBlank()) {
+                File f = new File(emp.getFoto());
+                if (f.exists()) {
+                    mostrarFotoEnPreview(f);
+                } else {
+                    quitarFotoEmpleado();
+                    fotoModificada = false;
+                }
+            } else {
+                quitarFotoEmpleado();
+                fotoModificada = false;
+            }
         }
     }
 

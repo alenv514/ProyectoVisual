@@ -92,9 +92,10 @@ public class ControlAccesoTest {
     }
 
     @Test
-    @DisplayName("DAO: Operaciones CRUD de Empleados en MySQL")
+    @DisplayName("DAO: Operaciones CRUD de Empleados en MySQL (incluyendo Foto)")
     void testCrudEmpleadoDAO() {
         Empleado nuevo = new Empleado(UID_PRUEBA, "Ana Gomez", "0987654321", "Contabilidad", "Analista");
+        nuevo.setFoto("fotos_empleados/test_foto.jpg");
         boolean guardado = empleadoDAO.guardar(nuevo);
         assertTrue(guardado, "Debe guardar al empleado en la base de datos");
         assertTrue(nuevo.getId() > 0, "Debe generar un ID autonumérico");
@@ -102,13 +103,16 @@ public class ControlAccesoTest {
         Empleado recuperado = empleadoDAO.buscarPorUid(UID_PRUEBA);
         assertNotNull(recuperado, "Debe encontrar al empleado por UID");
         assertEquals("Ana Gomez", recuperado.getNombre());
+        assertEquals("fotos_empleados/test_foto.jpg", recuperado.getFoto());
 
         recuperado.setNombre("Ana Gomez Modificada");
+        recuperado.setFoto("fotos_empleados/test_foto_mod.jpg");
         boolean actualizado = empleadoDAO.actualizar(recuperado);
         assertTrue(actualizado, "Debe actualizar los datos del empleado");
 
         Empleado modificado = empleadoDAO.buscarPorId(recuperado.getId());
         assertEquals("Ana Gomez Modificada", modificado.getNombre());
+        assertEquals("fotos_empleados/test_foto_mod.jpg", modificado.getFoto());
 
         boolean eliminado = empleadoDAO.eliminar(modificado.getId());
         assertTrue(eliminado, "Debe eliminar al empleado");

@@ -9,6 +9,7 @@ public abstract class Persona {
     protected int id;
     protected String nombre;
     protected String cedula;
+    protected String foto;
 
     public Persona() {
     }
@@ -22,6 +23,14 @@ public abstract class Persona {
     public Persona(String nombre, String cedula) {
         this.nombre = nombre;
         this.cedula = cedula;
+    }
+
+    public String getFoto() {
+        return foto;
+    }
+
+    public void setFoto(String foto) {
+        this.foto = foto;
     }
 
     public int getId() {

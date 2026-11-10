@@ -19,12 +19,18 @@ public class Empleado extends Persona {
 
     public Empleado(int id, String uidTarjeta, String nombre, String cedula,
                     String departamento, String cargo, boolean activo, String creadoEn) {
+        this(id, uidTarjeta, nombre, cedula, departamento, cargo, activo, creadoEn, null);
+    }
+
+    public Empleado(int id, String uidTarjeta, String nombre, String cedula,
+                    String departamento, String cargo, boolean activo, String creadoEn, String foto) {
         super(id, nombre, cedula);
         this.uidTarjeta = uidTarjeta;
         this.departamento = departamento;
         this.cargo = cargo;
         this.activo = activo;
         this.creadoEn = creadoEn;
+        this.foto = foto;
     }
 
     public Empleado(String uidTarjeta, String nombre, String cedula,
