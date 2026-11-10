@@ -129,7 +129,7 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         btnAbrirLoginRapido.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnAbrirLoginRapido.addActionListener(e -> accionarBotonAdmin());
 
-        btnAutorizarPaso = new JButton("📹 Verificar con Cámara y Autorizar");
+        btnAutorizarPaso = new JButton("📹 Ver Cámara y Autorizar");
         btnAutorizarPaso.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnAutorizarPaso.setBackground(new Color(39, 174, 96));
         btnAutorizarPaso.setForeground(Color.WHITE);
