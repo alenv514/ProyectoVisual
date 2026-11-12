@@ -229,4 +229,22 @@ public class ControlAccesoTest {
         assertEquals("ACCESO PERMITIDO", r3.getEstado());
         assertEquals("REINGRESO AUTORIZADO", r3.getTipo());
     }
+
+    @Test
+    @DisplayName("Reportes: Generación de reporte filtrado con JasperReports")
+    void testGenerarReporteConFiltros() throws Exception {
+        Empleado emp = new Empleado(UID_PRUEBA, "Reporte Test User", "0998877665", "Sistemas", "Desarrollador");
+        empleadoDAO.guardar(emp);
+
+        RegistroAsistencia r = controlador.procesarLecturaRfid(UID_PRUEBA);
+        assertNotNull(r);
+
+        net.sf.jasperreports.engine.JasperPrint printFiltrado = Reportes.GestorReportes.generarReporteAsistencias(UID_PRUEBA, null, null);
+        assertNotNull(printFiltrado);
+        assertFalse(printFiltrado.getPages().isEmpty());
+
+        net.sf.jasperreports.engine.JasperPrint printVacio = Reportes.GestorReportes.generarReporteAsistencias("NO_EXISTE_UID_XYZ_999", null, null);
+        assertNotNull(printVacio);
+        assertTrue(printVacio.getPages().isEmpty());
+    }
 }

@@ -746,7 +746,16 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
     }//GEN-LAST:event_btnLimpiarFiltroHistorialActionPerformed
 
     private void btnGenerarReporteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGenerarReporteActionPerformed
-        Reportes.GestorReportes.mostrarReporteAsistencias(this);
+        String filtroTexto = txtBuscarHistorial != null ? txtBuscarHistorial.getText().trim() : "";
+        String tipoSeleccionado = (cbFiltroTipo != null && cbFiltroTipo.getSelectedItem() != null)
+                ? cbFiltroTipo.getSelectedItem().toString() : "TODOS";
+        String estadoSeleccionado = (cbFiltroEstado != null && cbFiltroEstado.getSelectedItem() != null)
+                ? cbFiltroEstado.getSelectedItem().toString() : "TODOS";
+
+        String tipoFiltro = (!tipoSeleccionado.isBlank() && !tipoSeleccionado.equalsIgnoreCase("TODOS")) ? tipoSeleccionado : null;
+        String estadoFiltro = (!estadoSeleccionado.isBlank() && !estadoSeleccionado.equalsIgnoreCase("TODOS")) ? estadoSeleccionado : null;
+
+        Reportes.GestorReportes.mostrarReporteAsistencias(this, filtroTexto, tipoFiltro, estadoFiltro);
     }//GEN-LAST:event_btnGenerarReporteActionPerformed
 
     private void procesarLecturaRfid(String uid) {
