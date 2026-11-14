@@ -141,7 +141,40 @@ public class AsistenciaDAOSqlite implements AsistenciaDAO {
 
     @Override
     public boolean exportarCsv(File archivo, List<RegistroAsistencia> registros) {
-        return false;
+        if (archivo == null || registros == null) return false;
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(archivo, StandardCharsets.UTF_8))) {
+            // Escribir BOM para compatibilidad con Microsoft Excel
+            bw.write('\ufeff');
+
+            // Encabezados
+            bw.write("ID;Fecha y Hora;Nombre;Departamento;UID Tarjeta;Turno / Tipo;Horario Oficial;Puntualidad;Diferencia (min);Multa ($);Estado");
+            bw.newLine();
+
+            for (RegistroAsistencia r : registros) {
+                String multaFormato = String.format(Locale.US, "%.2f", r.getMulta());
+                String linea = String.format("%d;%s;%s;%s;%s;%s;%s;%s;%d;%s;%s",
+                        r.getId(),
+                        r.getFechaHora(),
+                        escaparCsv(r.getNombre()),
+                        escaparCsv(r.getDepartamento()),
+                        r.getUid(),
+                        r.getTipo(),
+                        r.getHorarioEsperado(),
+                        escaparCsv(r.getDetallePuntualidad()),
+                        r.getMinutosDiferencia(),
+                        multaFormato,
+                        r.getEstado()
+                );
+                bw.write(linea);
+                bw.newLine();
+            }
+            bw.flush();
+            return true;
+        } catch (IOException e) {
+            System.err.println("Error al exportar reporte CSV: " + e.getMessage());
+            return false;
+        }
     }
 
     private RegistroAsistencia mapearAsistencia(ResultSet rs) throws SQLException {
