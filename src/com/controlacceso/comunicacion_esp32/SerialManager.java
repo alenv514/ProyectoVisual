@@ -205,4 +205,69 @@ public class SerialManager {
             notificarEstado(false, "Buscando lector RFID...");
         }
     }
+
+    public boolean estaConectado() {
+        return activePort != null && activePort.isOpen();
+    }
+
+    public synchronized boolean enviarComando(String comando) {
+        if (!estaConectado()) {
+            return false;
+        }
+        try {
+            OutputStream out = activePort.getOutputStream();
+            String linea = comando.endsWith("\n") ? comando : comando + "\n";
+            byte[] bytes = linea.getBytes(StandardCharsets.UTF_8);
+            out.write(bytes);
+            out.flush();
+            notificarLog("TX -> " + comando.trim());
+            return true;
+        } catch (Exception e) {
+            notificarLog("Error al enviar comando: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public void enviarRespuesta(boolean permitido, String nombre) {
+        String msg = (permitido ? "OK:" : "ERR:") + (nombre != null ? nombre : "DESCONOCIDO");
+        enviarComando(msg);
+    }
+
+    private void procesarLinea(String linea) {
+        notificarLog("RX <- " + linea);
+
+        String uidExtraido = null;
+        String upper = linea.toUpperCase();
+
+        if (upper.startsWith("UID:")) {
+            uidExtraido = upper.substring(4).replaceAll("[^A-F0-9]", "");
+        } else if (upper.matches("([0-9A-F]{2}\\s*)+") && upper.replaceAll("\\s+", "").length() >= 4) {
+            uidExtraido = upper.replaceAll("\\s+", "");
+        }
+
+        if (uidExtraido != null && !uidExtraido.isEmpty()) {
+            final String finalUid = uidExtraido;
+            SwingUtilities.invokeLater(() -> {
+                if (listener != null) {
+                    listener.onUidReceived(finalUid);
+                }
+            });
+        }
+    }
+
+    private void notificarEstado(boolean conectado, String mensaje) {
+        SwingUtilities.invokeLater(() -> {
+            if (listener != null) {
+                listener.onPortStateChanged(conectado, mensaje);
+            }
+        });
+    }
+
+    private void notificarLog(String log) {
+        SwingUtilities.invokeLater(() -> {
+            if (listener != null) {
+                listener.onLogMessage(log);
+            }
+        });
+    }
 }
