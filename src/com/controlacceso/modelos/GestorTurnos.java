@@ -33,7 +33,6 @@ public class GestorTurnos {
         boolean tieneEntradaTarde  = false;
         boolean tieneSalidaTarde   = false;
         boolean enReingresoActivo  = false;
-        boolean tuvoReingreso      = false;
 
         if (marcasHoy != null) {
             for (RegistroAsistencia m : marcasHoy) {
@@ -46,18 +45,6 @@ public class GestorTurnos {
                 String norm = Normalizer.normalize(t.toUpperCase(), Normalizer.Form.NFD)
                         .replaceAll("[^A-Z]", " ");
 
-                boolean esReingreso = norm.contains("REINGRESO");
-                if (esReingreso) {
-                    tuvoReingreso = true;
-                    enReingresoActivo = !norm.contains("SALIDA") && !norm.contains("DENEGADO");
-                    continue;
-                } else {
-                    enReingresoActivo = false;
-                }
-
-                boolean esEntrada = norm.contains("ENTRADA");
-                boolean esSalida  = norm.contains("SALIDA");
-
                 int horaMarca = -1;
                 String fh = m.getFechaHora();
                 if (fh != null && fh.length() >= 13) {
@@ -66,6 +53,24 @@ public class GestorTurnos {
                         horaMarca = Integer.parseInt(parteHora);
                     } catch (Exception ignored) {}
                 }
+
+                boolean esReingreso = norm.contains("REINGRESO");
+                if (esReingreso) {
+                    enReingresoActivo = !norm.contains("SALIDA") && !norm.contains("DENEGADO");
+                    if (horaMarca >= 0 && horaMarca < 13) {
+                        tieneEntradaManana = true;
+                        tieneSalidaManana  = true;
+                    } else if (horaMarca >= 13) {
+                        tieneEntradaTarde = true;
+                        tieneSalidaTarde  = true;
+                    }
+                    continue;
+                } else {
+                    enReingresoActivo = false;
+                }
+
+                boolean esEntrada = norm.contains("ENTRADA");
+                boolean esSalida  = norm.contains("SALIDA");
 
                 boolean esManana = norm.contains("MA") || (horaMarca >= 0 && horaMarca < 13);
                 boolean esTarde  = norm.contains("TARDE") || norm.contains("ANTICIPADA") || (horaMarca >= 13);
@@ -82,9 +87,6 @@ public class GestorTurnos {
 
         if (enReingresoActivo) {
             return new ResultadoCalculoTurno("SALIDA DE REINGRESO", "-", 0, 0.0, "SALIDA DE REINGRESO ($0.00)");
-        }
-        if (tuvoReingreso) {
-            return new ResultadoCalculoTurno("REQUIERE AUTORIZACIÓN ADMIN", "-", 0, 0.0, "LÍMITE ALCANZADO: ESPERE AL ADMIN", true);
         }
 
         // 1. Horario de la Mañana (antes de las 13:00 / 1:00 PM)
