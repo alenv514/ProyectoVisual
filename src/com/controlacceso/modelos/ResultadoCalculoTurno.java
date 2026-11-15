@@ -1,8 +1,5 @@
 package com.controlacceso.modelos;
 
-/**
- * Objeto DTO que encapsula el resultado del cálculo de puntualidad y multas.
- */
 public class ResultadoCalculoTurno {
 
     private String tipo;
