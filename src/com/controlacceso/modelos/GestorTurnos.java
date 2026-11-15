@@ -33,6 +33,7 @@ public class GestorTurnos {
         boolean tieneEntradaTarde  = false;
         boolean tieneSalidaTarde   = false;
         boolean enReingresoActivo  = false;
+        boolean tuvoReingreso      = false;
 
         if (marcasHoy != null) {
             for (RegistroAsistencia m : marcasHoy) {
@@ -46,15 +47,12 @@ public class GestorTurnos {
                         .replaceAll("[^A-Z]", " ");
 
                 boolean esReingreso = norm.contains("REINGRESO");
-                if (esReingreso && !norm.contains("SALIDA") && !norm.contains("DENEGADO")) {
-                    enReingresoActivo = true;
+                if (esReingreso) {
+                    tuvoReingreso = true;
+                    enReingresoActivo = !norm.contains("SALIDA") && !norm.contains("DENEGADO");
                     continue;
                 } else {
                     enReingresoActivo = false;
-                }
-
-                if (esReingreso) {
-                    continue;
                 }
 
                 boolean esEntrada = norm.contains("ENTRADA");
@@ -85,6 +83,9 @@ public class GestorTurnos {
         if (enReingresoActivo) {
             return new ResultadoCalculoTurno("SALIDA DE REINGRESO", "-", 0, 0.0, "SALIDA DE REINGRESO ($0.00)");
         }
+        if (tuvoReingreso) {
+            return new ResultadoCalculoTurno("REQUIERE AUTORIZACIÓN ADMIN", "-", 0, 0.0, "LÍMITE ALCANZADO: ESPERE AL ADMIN", true);
+        }
 
         // 1. Horario de la Mañana (antes de las 13:00 / 1:00 PM)
         if (horaActual.isBefore(LocalTime.of(13, 0))) {
@@ -102,6 +103,8 @@ public class GestorTurnos {
                 return turnoManana.evaluarSalida(horaActual);
             } else if (!tieneEntradaTarde) {
                 return new ResultadoCalculoTurno("ENTRADA ANTICIPADA", "14:00", 0, 0.0, "A TIEMPO ($0.00)");
+            } else if (!tieneSalidaTarde) {
+                return turnoTarde.evaluarSalida(horaActual);
             } else {
                 return new ResultadoCalculoTurno("REQUIERE AUTORIZACIÓN ADMIN", "-", 0, 0.0, "LÍMITE ALCANZADO: ESPERE AL ADMIN", true);
             }
