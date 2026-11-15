@@ -77,8 +77,9 @@ public class GestorReportes {
         List<Object> paramsList = new ArrayList<>();
 
         if (buscar != null && !buscar.isBlank()) {
-            sql.append(" AND (LOWER(nombre) LIKE ? OR LOWER(uid) LIKE ?)");
+            sql.append(" AND (LOWER(nombre) LIKE ? OR LOWER(uid) LIKE ? OR CAST(id AS CHAR) LIKE ?)");
             String term = "%" + buscar.trim().toLowerCase() + "%";
+            paramsList.add(term);
             paramsList.add(term);
             paramsList.add(term);
         }

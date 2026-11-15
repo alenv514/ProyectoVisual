@@ -90,8 +90,9 @@ public class AsistenciaDAOMySql implements AsistenciaDAO {
             params.add(fecha.trim() + "%");
         }
         if (nombre != null && !nombre.isBlank()) {
-            sql.append(" AND (LOWER(nombre) LIKE ? OR LOWER(uid) LIKE ?)");
+            sql.append(" AND (LOWER(nombre) LIKE ? OR LOWER(uid) LIKE ? OR CAST(id AS CHAR) LIKE ?)");
             String term = "%" + nombre.trim().toLowerCase() + "%";
+            params.add(term);
             params.add(term);
             params.add(term);
         }
