@@ -1,10 +1,10 @@
-/*package com.controlacceso;
+package com.controlacceso;
 
 import com.controlacceso.basededatos.AsistenciaDAO;
-import com.controlacceso.basededatos.AsistenciaDAOSqlite;
-import com.controlacceso.basededatos.ConexionBD;
+import com.controlacceso.basededatos.AsistenciaDAOMySql;
+import conexion.Conexion;
 import com.controlacceso.basededatos.EmpleadoDAO;
-import com.controlacceso.basededatos.EmpleadoDAOSqlite;
+import com.controlacceso.basededatos.EmpleadoDAOMySql;
 import com.controlacceso.controlador.ControladorAcceso;
 import com.controlacceso.modelos.Empleado;
 import com.controlacceso.modelos.Persona;
@@ -17,7 +17,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.time.LocalTime;
@@ -27,21 +26,22 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class ControlAccesoTest {
 
-    private final EmpleadoDAO empleadoDAO = new EmpleadoDAOSqlite();
-    private final AsistenciaDAO asistenciaDAO = new AsistenciaDAOSqlite();
+    private final EmpleadoDAO empleadoDAO = new EmpleadoDAOMySql();
+    private final AsistenciaDAO asistenciaDAO = new AsistenciaDAOMySql();
     private final ControladorAcceso controlador = new ControladorAcceso();
 
     private final String UID_PRUEBA = "TEST_POO_123";
 
     @BeforeEach
     void limpiarPruebasAnteriores() {
-        try (Connection conn = ConexionBD.obtenerConexion()) {
-            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM usuarios WHERE uid = ?")) {
-                pstmt.setString(1, UID_PRUEBA);
+        try (Connection conn = Conexion.getConexion()) {
+            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM usuarios WHERE uid LIKE ?")) {
+                pstmt.setString(1, "TEST_%");
                 pstmt.executeUpdate();
             }
-            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM asistencias WHERE uid = ?")) {
-                pstmt.setString(1, UID_PRUEBA);
+            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM asistencias WHERE uid LIKE ? OR uid LIKE ?")) {
+                pstmt.setString(1, "TEST_%");
+                pstmt.setString(2, "UID_DESCONOCIDO%");
                 pstmt.executeUpdate();
             }
         } catch (Exception e) {
@@ -92,9 +92,10 @@ public class ControlAccesoTest {
     }
 
     @Test
-    @DisplayName("DAO: Operaciones CRUD de Empleados en SQLite")
+    @DisplayName("DAO: Operaciones CRUD de Empleados en MySQL (incluyendo Foto)")
     void testCrudEmpleadoDAO() {
         Empleado nuevo = new Empleado(UID_PRUEBA, "Ana Gomez", "0987654321", "Contabilidad", "Analista");
+        nuevo.setFoto("fotos_empleados/test_foto.jpg");
         boolean guardado = empleadoDAO.guardar(nuevo);
         assertTrue(guardado, "Debe guardar al empleado en la base de datos");
         assertTrue(nuevo.getId() > 0, "Debe generar un ID autonumérico");
@@ -102,13 +103,16 @@ public class ControlAccesoTest {
         Empleado recuperado = empleadoDAO.buscarPorUid(UID_PRUEBA);
         assertNotNull(recuperado, "Debe encontrar al empleado por UID");
         assertEquals("Ana Gomez", recuperado.getNombre());
+        assertEquals("fotos_empleados/test_foto.jpg", recuperado.getFoto());
 
         recuperado.setNombre("Ana Gomez Modificada");
+        recuperado.setFoto("fotos_empleados/test_foto_mod.jpg");
         boolean actualizado = empleadoDAO.actualizar(recuperado);
         assertTrue(actualizado, "Debe actualizar los datos del empleado");
 
         Empleado modificado = empleadoDAO.buscarPorId(recuperado.getId());
         assertEquals("Ana Gomez Modificada", modificado.getNombre());
+        assertEquals("fotos_empleados/test_foto_mod.jpg", modificado.getFoto());
 
         boolean eliminado = empleadoDAO.eliminar(modificado.getId());
         assertTrue(eliminado, "Debe eliminar al empleado");
@@ -134,29 +138,113 @@ public class ControlAccesoTest {
     }
 
     @Test
-    @DisplayName("Reporte: Exportación a archivo CSV")
-    void testExportacionCsv() {
-        RegistroAsistencia r = new RegistroAsistencia();
-        r.setUid(UID_PRUEBA);
-        r.setNombre("Empleado CSV");
-        r.setDepartamento("Ventas");
-        r.setTipo("ENTRADA MAÑANA");
-        r.setEstado("ACCESO PERMITIDO");
-        r.setFechaHora("2026-11-05 07:15:00");
-        r.setHorarioEsperado("07:00");
-        r.setMinutosDiferencia(15);
-        r.setMulta(0.75);
-        r.setDetallePuntualidad("ATRASO: 15 min");
+    @DisplayName("Reportes: Verificación de plantilla JasperReports")
+    void testPlantillaJasperReports() {
+        assertNotNull(getClass().getResourceAsStream("/Reportes/ReporteAsistencias.jasper"),
+                "El archivo compilado ReporteAsistencias.jasper debe existir en el classpath");
+    }
 
-        asistenciaDAO.registrar(r);
+    @Test
+    @DisplayName("RelojSistema: Verificación de reloj independiente y monotónico")
+    void testRelojSistemaMonotonico() throws InterruptedException {
+        java.time.LocalDateTime t1 = com.controlacceso.modelos.RelojSistema.ahora();
+        Thread.sleep(50);
+        java.time.LocalDateTime t2 = com.controlacceso.modelos.RelojSistema.ahora();
+        assertTrue(t2.isAfter(t1) || t2.isEqual(t1), "El tiempo del reloj independiente debe avanzar continuamente");
+        assertNotNull(com.controlacceso.modelos.RelojSistema.getHoraFormateada());
+    }
 
-        File tempFile = new File(System.getProperty("java.io.tmpdir"), "test_reporte_poo.csv");
-        List<RegistroAsistencia> lista = asistenciaDAO.listarPorFiltros(null, "Empleado CSV");
-        boolean exportado = asistenciaDAO.exportarCsv(tempFile, lista);
+    @Test
+    @DisplayName("Seguridad: Autenticación de Administrador")
+    void testAutenticacionAdmin() {
+        assertTrue(com.controlacceso.autenticacion.AdminAuthService.autenticar("admin", "admin123"),
+                "Debe autenticar correctamente al admin con credenciales válidas");
+        assertTrue(com.controlacceso.autenticacion.AdminAuthService.autenticar("admin", "admin"),
+                "Debe aceptar clave de respaldo admin");
+        assertFalse(com.controlacceso.autenticacion.AdminAuthService.autenticar("admin", "clave_invalida"),
+                "Debe denegar acceso con clave incorrecta");
+        assertFalse(com.controlacceso.autenticacion.AdminAuthService.autenticar("hacker", "admin123"),
+                "Debe denegar acceso con usuario desconocido");
+    }
 
-        assertTrue(exportado, "Debe exportar el archivo CSV correctamente");
-        assertTrue(tempFile.exists() && tempFile.length() > 0, "El archivo CSV no debe estar vacío");
-        tempFile.delete();
+    @Test
+    @DisplayName("DAO / Filtros: Búsqueda de asistencias por Tipo y Estado")
+    void testFiltrosAsistenciaTipoYEstado() {
+        // Registrar empleado y marcar acceso permitido
+        Empleado emp = new Empleado(UID_PRUEBA, "Filtro Test User", "0999999999", "Sistemas", "Tester");
+        empleadoDAO.guardar(emp);
+
+        RegistroAsistencia regPermitido = controlador.procesarLecturaRfid(UID_PRUEBA);
+        assertNotNull(regPermitido);
+
+        // Generar una marcación denegada con UID temporal
+        controlador.procesarLecturaRfid(UID_PRUEBA + "_DENEGADO");
+
+        // 1. Filtrar solo permitidos para este usuario
+        List<RegistroAsistencia> permitidos = controlador.listarAsistenciasPorFiltros(null, "Filtro Test User", "TODOS", "ACCESO PERMITIDO");
+        assertFalse(permitidos.isEmpty(), "Debe encontrar registros permitidos");
+        assertTrue(permitidos.stream().allMatch(r -> "ACCESO PERMITIDO".equalsIgnoreCase(r.getEstado())));
+
+        // 2. Filtrar solo denegados
+        List<RegistroAsistencia> denegados = controlador.listarAsistenciasPorFiltros(null, UID_PRUEBA + "_DENEGADO", "TODOS", "ACCESO DENEGADO");
+        assertFalse(denegados.isEmpty(), "Debe encontrar registros denegados");
+        assertTrue(denegados.stream().allMatch(r -> "ACCESO DENEGADO".equalsIgnoreCase(r.getEstado())));
+
+        // 3. Filtrar por tipo específico que no coincida (debe dar vacío)
+        List<RegistroAsistencia> vacio = controlador.listarAsistenciasPorFiltros(null, UID_PRUEBA, "TIPO_INEXISTENTE", "ACCESO PERMITIDO");
+        assertTrue(vacio.isEmpty(), "Filtro no coincidente debe retornar lista vacía");
+
+        // Limpieza extra
+        try (Connection conn = Conexion.getConexion();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM asistencias WHERE uid LIKE ?")) {
+            ps.setString(1, UID_PRUEBA + "%");
+            ps.executeUpdate();
+        } catch (Exception ignored) {}
+    }
+
+    @Test
+    @DisplayName("Seguridad: Tercera marcación requiere autorización del Administrador")
+    void testTerceraMarcacionRequiereAutorizacionAdmin() {
+        Empleado emp = new Empleado(UID_PRUEBA, "Seguridad Test User", "0102030405", "Seguridad", "Inspector");
+        empleadoDAO.guardar(emp);
+
+        // Pase 1: Entrada
+        RegistroAsistencia r1 = controlador.procesarLecturaRfid(UID_PRUEBA);
+        assertNotNull(r1);
+        assertEquals("ACCESO PERMITIDO", r1.getEstado());
+
+        // Pase 2: Salida
+        RegistroAsistencia r2 = controlador.procesarLecturaRfid(UID_PRUEBA);
+        assertNotNull(r2);
+        assertEquals("ACCESO PERMITIDO", r2.getEstado());
+
+        // Pase 3: Tercer intento -> Requiere autorización del Administrador
+        RegistroAsistencia r3 = controlador.procesarLecturaRfid(UID_PRUEBA);
+        assertNotNull(r3);
+        assertEquals("EN ESPERA DE ADMIN", r3.getEstado());
+        assertEquals("REQUIERE AUTORIZACIÓN ADMIN", r3.getTipo());
+
+        // Admin autoriza el reingreso
+        controlador.autorizarAccesoExcepcional(r3);
+        assertEquals("ACCESO PERMITIDO", r3.getEstado());
+        assertEquals("REINGRESO AUTORIZADO", r3.getTipo());
+    }
+
+    @Test
+    @DisplayName("Reportes: Generación de reporte filtrado con JasperReports")
+    void testGenerarReporteConFiltros() throws Exception {
+        Empleado emp = new Empleado(UID_PRUEBA, "Reporte Test User", "0998877665", "Sistemas", "Desarrollador");
+        empleadoDAO.guardar(emp);
+
+        RegistroAsistencia r = controlador.procesarLecturaRfid(UID_PRUEBA);
+        assertNotNull(r);
+
+        net.sf.jasperreports.engine.JasperPrint printFiltrado = Reportes.GestorReportes.generarReporteAsistencias(UID_PRUEBA, null, null);
+        assertNotNull(printFiltrado);
+        assertFalse(printFiltrado.getPages().isEmpty());
+
+        net.sf.jasperreports.engine.JasperPrint printVacio = Reportes.GestorReportes.generarReporteAsistencias("NO_EXISTE_UID_XYZ_999", null, null);
+        assertNotNull(printVacio);
+        assertTrue(printVacio.getPages().isEmpty());
     }
 }
-*/

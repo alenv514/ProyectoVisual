@@ -1,53 +1,93 @@
 package com.controlacceso.modelos;
 
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
-/**
- * Gestor encargado de seleccionar el Turno y calcular la puntualidad
- * según la secuencia de marcaciones del empleado en el día.
- */
 public class GestorTurnos {
 
     private final Turno turnoManana = new TurnoManana();
     private final Turno turnoTarde = new TurnoTarde();
 
-    /**
-     * Calcula el resultado de la marcación aplicando el turno correspondiente.
-     */
     public ResultadoCalculoTurno calcularMarcacion(LocalDateTime momento, List<RegistroAsistencia> marcasHoy) {
         LocalTime horaActual = momento.toLocalTime();
-        int cantidadMarcas = marcasHoy != null ? marcasHoy.size() : 0;
 
-        if (cantidadMarcas == 0) {
-            // Primera marca del día: Entrada
-            if (horaActual.isBefore(LocalTime.of(13, 30))) {
+        boolean tieneEntradaManana = false;
+        boolean tieneSalidaManana  = false;
+        boolean tieneEntradaTarde  = false;
+        boolean tieneSalidaTarde   = false;
+
+        if (marcasHoy != null) {
+            for (RegistroAsistencia m : marcasHoy) {
+                if ("ACCESO DENEGADO".equalsIgnoreCase(m.getEstado())) {
+                    continue;
+                }
+                String t = m.getTipo();
+                if (t == null) continue;
+
+                String norm = Normalizer.normalize(t.toUpperCase(), Normalizer.Form.NFD)
+                        .replaceAll("[^A-Z]", " ");
+
+                boolean esEntrada = norm.contains("ENTRADA");
+                boolean esSalida  = norm.contains("SALIDA");
+
+                int horaMarca = -1;
+                String fh = m.getFechaHora();
+                if (fh != null && fh.length() >= 13) {
+                    try {
+                        String parteHora = fh.substring(11, 13);
+                        horaMarca = Integer.parseInt(parteHora);
+                    } catch (Exception ignored) {}
+                }
+
+                boolean esManana = norm.contains("MA") || (horaMarca >= 0 && horaMarca < 13);
+                boolean esTarde  = norm.contains("TARDE") || norm.contains("ANTICIPADA") || (horaMarca >= 13);
+
+                if (esManana) {
+                    if (esEntrada) tieneEntradaManana = true;
+                    if (esSalida)  tieneSalidaManana  = true;
+                } else if (esTarde) {
+                    if (esEntrada) tieneEntradaTarde = true;
+                    if (esSalida)  tieneSalidaTarde  = true;
+                }
+            }
+        }
+
+        if (horaActual.isBefore(LocalTime.of(13, 0))) {
+            if (!tieneEntradaManana) {
                 return turnoManana.evaluarEntrada(horaActual);
-            } else {
-                return turnoTarde.evaluarEntrada(horaActual);
-            }
-        } else if (cantidadMarcas == 1) {
-            // Segunda marca del día: Salida
-            RegistroAsistencia primera = marcasHoy.get(0);
-            if (primera.getTipo() != null && primera.getTipo().contains("TARDE")) {
-                return turnoTarde.evaluarSalida(horaActual);
-            } else {
+            } else if (!tieneSalidaManana) {
                 return turnoManana.evaluarSalida(horaActual);
+            } else {
+                return new ResultadoCalculoTurno("REQUIERE AUTORIZACIÓN ADMIN", "-", 0, 0.0, "LÍMITE ALCANZADO: ESPERE AL ADMIN", true);
             }
-        } else if (cantidadMarcas == 2) {
-            // Tercera marca del día: Entrada de la tarde
-            return turnoTarde.evaluarEntrada(horaActual);
-        } else if (cantidadMarcas == 3) {
-            // Cuarta marca del día: Salida de la tarde
-            return turnoTarde.evaluarSalida(horaActual);
-        } else {
-            // Marcas adicionales
-            RegistroAsistencia ultima = marcasHoy.get(marcasHoy.size() - 1);
-            if (ultima.getTipo() != null && ultima.getTipo().startsWith("ENTRADA")) {
+        }
+        else if (horaActual.isBefore(LocalTime.of(14, 0))) {
+            if (tieneEntradaManana && !tieneSalidaManana) {
+                return turnoManana.evaluarSalida(horaActual);
+            } else if (!tieneEntradaTarde) {
+                return new ResultadoCalculoTurno("ENTRADA ANTICIPADA", "14:00", 0, 0.0, "A TIEMPO ($0.00)");
+            } else {
+                return new ResultadoCalculoTurno("REQUIERE AUTORIZACIÓN ADMIN", "-", 0, 0.0, "LÍMITE ALCANZADO: ESPERE AL ADMIN", true);
+            }
+        }
+        else if (horaActual.isBefore(LocalTime.of(20, 0))) {
+            if (!tieneEntradaTarde) {
+                return turnoTarde.evaluarEntrada(horaActual);
+            } else if (!tieneSalidaTarde) {
                 return turnoTarde.evaluarSalida(horaActual);
             } else {
-                return new ResultadoCalculoTurno("ENTRADA ADICIONAL", "-", 0, 0.0, "A TIEMPO ($0.00)");
+                return new ResultadoCalculoTurno("REQUIERE AUTORIZACIÓN ADMIN", "-", 0, 0.0, "LÍMITE ALCANZADO: ESPERE AL ADMIN", true);
+            }
+        }
+        else {
+            if (tieneEntradaTarde && !tieneSalidaTarde) {
+                return turnoTarde.evaluarSalida(horaActual);
+            } else if (!tieneEntradaTarde) {
+                return new ResultadoCalculoTurno("ENTRADA ANTICIPADA", "-", 0, 0.0, "A TIEMPO ($0.00)");
+            } else {
+                return new ResultadoCalculoTurno("REQUIERE AUTORIZACIÓN ADMIN", "-", 0, 0.0, "LÍMITE ALCANZADO: ESPERE AL ADMIN", true);
             }
         }
     }

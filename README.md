@@ -39,7 +39,7 @@ El sistema controla automáticamente las 4 marcaciones diarias y calcula penaliz
 3. **Historial y Reportes:**
    * Consulta histórica completa de todas las asistencias con fecha, turno, puntualidad y multa.
    * Filtros por texto, turno y estado.
-   * Botón **"Exportar a Excel / CSV"** con todos los datos detallados.
+   * Botón **"Generar Reporte Jasper (PDF)"** para visualizar, imprimir y exportar reportes oficiales con JasperViewer.
 
 ---
 

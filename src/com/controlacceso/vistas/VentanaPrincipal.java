@@ -1,0 +1,1509 @@
+package com.controlacceso.vistas;
+
+import com.controlacceso.autenticacion.DialogoLoginAdmin;
+import com.controlacceso.comunicacion_esp32.SerialListener;
+import com.controlacceso.controlador.ControladorAcceso;
+import com.controlacceso.modelos.Empleado;
+import com.controlacceso.modelos.RegistroAsistencia;
+
+import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+/**
+ * JFrame Form principal para NetBeans Matisse
+ * Control de Acceso y Asistencia con RFID
+ *
+ * @author Alen
+ */
+public class VentanaPrincipal extends javax.swing.JFrame implements SerialListener {
+
+    private final ControladorAcceso controlador = new ControladorAcceso();
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private final Map<String, Long> cooldownLecturas = new HashMap<>();
+    private static final long COOLDOWN_MS = 10000;
+
+    private DefaultTableModel modeloAccesosRecientes;
+    private DefaultTableModel modeloUsuarios;
+    private DefaultTableModel modeloHistorial;
+    private Timer timerResetEstado;
+    private JLabel lblRelojSistema;
+    private Timer timerRelojSistema;
+    private boolean adminAutenticado = false;
+    private JButton btnSesionAdmin;
+    private String ultimoUidLeido = "";
+    private JPanel panelAccionAdmin;
+    private JLabel lblAvisoEsperaAdmin;
+    private JButton btnAbrirLoginRapido;
+    private JButton btnAutorizarPaso;
+    private JButton btnDenegarPaso;
+    private RegistroAsistencia registroPendiente = null;
+    private JLabel lblPreviewFoto;
+    private JButton btnSubirFoto;
+    private JButton btnQuitarFoto;
+    private File archivoFotoSeleccionada = null;
+    private boolean fotoModificada = false;
+
+    /**
+     * Creates new form VentanaPrincipal
+     */
+    public VentanaPrincipal() {
+        initComponents();
+        personalizarComponentes();
+    }
+
+    private void personalizarComponentes() {
+        controlador.configurarListenerSerial(this);
+        setLocationRelativeTo(null);
+
+        // Modelos de JTable
+        modeloAccesosRecientes = (DefaultTableModel) tablaAccesosRecientes.getModel();
+        modeloUsuarios = (DefaultTableModel) tablaUsuarios.getModel();
+        modeloHistorial = (DefaultTableModel) tablaHistorial.getModel();
+
+        personalizarRendererTablaRecientes(tablaAccesosRecientes);
+        personalizarRendererTablaHistorial(tablaHistorial);
+
+        tablaUsuarios.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && tablaUsuarios.getSelectedRow() != -1) {
+                cargarUsuarioSeleccionadoEnFormulario();
+            }
+        });
+
+        cargarTablaUsuarios();
+        cargarTablaHistorial();
+        cargarTablaAccesosRecientes();
+        iniciarTimerResetEstado();
+
+        // Configurar reloj independiente y botón admin en el panel superior
+        JPanel panelDerechoSuperior = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        panelDerechoSuperior.setOpaque(false);
+        lblRelojSistema = new JLabel("Hora: " + com.controlacceso.modelos.RelojSistema.getHoraFormateada());
+        lblRelojSistema.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblRelojSistema.setForeground(new Color(26, 188, 156)); // Verde esmeralda suave
+        lblRelojSistema.setToolTipText("Reloj independiente del sistema (inmune a cambios de hora en Windows)");
+
+        btnSesionAdmin = new JButton();
+        btnSesionAdmin.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnSesionAdmin.addActionListener(e -> accionarBotonAdmin());
+
+        panelSuperior.remove(lblEstadoConexion);
+        panelDerechoSuperior.add(lblRelojSistema);
+        panelDerechoSuperior.add(lblEstadoConexion);
+        panelDerechoSuperior.add(btnSesionAdmin);
+        panelSuperior.add(panelDerechoSuperior, BorderLayout.LINE_END);
+        panelSuperior.revalidate();
+
+        // Configurar panel de autorización para la 3ra marcación excepcional
+        panelAccionAdmin = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 6));
+        panelAccionAdmin.setOpaque(false);
+
+        lblAvisoEsperaAdmin = new JLabel("[!] Acceso detenido: Se requiere autorización de Administrador.");
+        lblAvisoEsperaAdmin.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblAvisoEsperaAdmin.setForeground(Color.WHITE);
+
+        btnAbrirLoginRapido = new JButton("Iniciar Sesión Admin");
+        btnAbrirLoginRapido.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnAbrirLoginRapido.setBackground(new Color(41, 128, 185));
+        btnAbrirLoginRapido.setForeground(Color.WHITE);
+        btnAbrirLoginRapido.setOpaque(true);
+        btnAbrirLoginRapido.setContentAreaFilled(true);
+        btnAbrirLoginRapido.setBorderPainted(false);
+        btnAbrirLoginRapido.setFocusPainted(false);
+        btnAbrirLoginRapido.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnAbrirLoginRapido.addActionListener(e -> accionarBotonAdmin());
+
+        btnAutorizarPaso = new JButton("📹 Ver Cámara y Autorizar");
+        btnAutorizarPaso.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnAutorizarPaso.setBackground(new Color(39, 174, 96));
+        btnAutorizarPaso.setForeground(Color.WHITE);
+        btnAutorizarPaso.setOpaque(true);
+        btnAutorizarPaso.setContentAreaFilled(true);
+        btnAutorizarPaso.setBorderPainted(false);
+        btnAutorizarPaso.setFocusPainted(false);
+        btnAutorizarPaso.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnAutorizarPaso.addActionListener(e -> autorizarPasoPendiente());
+
+        btnDenegarPaso = new JButton("✖ Denegar Paso");
+        btnDenegarPaso.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnDenegarPaso.setBackground(new Color(192, 57, 43));
+        btnDenegarPaso.setForeground(Color.WHITE);
+        btnDenegarPaso.setOpaque(true);
+        btnDenegarPaso.setContentAreaFilled(true);
+        btnDenegarPaso.setBorderPainted(false);
+        btnDenegarPaso.setFocusPainted(false);
+        btnDenegarPaso.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnDenegarPaso.addActionListener(e -> denegarPasoPendiente());
+
+        panelAccionAdmin.add(lblAvisoEsperaAdmin);
+        panelAccionAdmin.add(btnAbrirLoginRapido);
+        panelAccionAdmin.add(btnAutorizarPaso);
+        panelAccionAdmin.add(btnDenegarPaso);
+        panelAccionAdmin.setVisible(false);
+
+        panelEstadoAcceso.add(panelAccionAdmin, BorderLayout.PAGE_END);
+
+        // Configurar panel de foto en el formulario de personal
+        panelFormPersonal.remove(panelCamposForm);
+        panelFormPersonal.setPreferredSize(new Dimension(420, 0));
+
+        JPanel panelSuperiorForm = new JPanel(new BorderLayout(0, 10));
+        panelSuperiorForm.setOpaque(false);
+        panelSuperiorForm.add(crearPanelFotoEmpleado(), BorderLayout.NORTH);
+        panelSuperiorForm.add(panelCamposForm, BorderLayout.CENTER);
+
+        panelFormPersonal.add(panelSuperiorForm, BorderLayout.PAGE_START);
+        panelFormPersonal.revalidate();
+
+        iniciarTimerRelojSistema();
+
+        // Por estética y seguridad: al inicio solo se muestra la parte de la tarjeta (Control de Acceso)
+        actualizarVisibilidadTabsAdmin();
+
+        // Iniciar auto-conexión en segundo plano para el ESP32
+        controlador.iniciarComunicacionSerial();
+
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (timerRelojSistema != null) {
+                    timerRelojSistema.stop();
+                }
+                controlador.detenerComunicacionSerial();
+            }
+        });
+    }
+
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        panelSuperior = new javax.swing.JPanel();
+        lblTitulo = new javax.swing.JLabel();
+        lblEstadoConexion = new javax.swing.JLabel();
+        tabbedPane = new javax.swing.JTabbedPane();
+        panelMonitoreo = new javax.swing.JPanel();
+        panelIzquierdoMonitoreo = new javax.swing.JPanel();
+        panelEstadoAcceso = new javax.swing.JPanel();
+        lblTituloResultado = new javax.swing.JLabel();
+        panelDetalles = new javax.swing.JPanel();
+        lblClaveNombre = new javax.swing.JLabel();
+        lblNombreDetectado = new javax.swing.JLabel();
+        lblClaveUid = new javax.swing.JLabel();
+        lblUidDetectado = new javax.swing.JLabel();
+        lblClaveHora = new javax.swing.JLabel();
+        lblHoraDetectada = new javax.swing.JLabel();
+        lblClaveTipo = new javax.swing.JLabel();
+        lblTipoDetectado = new javax.swing.JLabel();
+        lblClaveHorarioOficial = new javax.swing.JLabel();
+        lblHorarioOficialDetectado = new javax.swing.JLabel();
+        lblClavePuntualidad = new javax.swing.JLabel();
+        lblPuntualidadDetectada = new javax.swing.JLabel();
+        lblClaveMulta = new javax.swing.JLabel();
+        lblMultaDetectada = new javax.swing.JLabel();
+        panelReglasHorario = new javax.swing.JPanel();
+        lblRegla1 = new javax.swing.JLabel();
+        lblRegla2 = new javax.swing.JLabel();
+        lblRegla3 = new javax.swing.JLabel();
+        panelFilaSimulador = new javax.swing.JPanel();
+        chkCooldown = new javax.swing.JCheckBox();
+        lblSimularTexto = new javax.swing.JLabel();
+        txtSimularUid = new javax.swing.JTextField();
+        btnSimularLectura = new javax.swing.JButton();
+        panelDerechoMonitoreo = new javax.swing.JPanel();
+        jScrollPaneRecientes = new javax.swing.JScrollPane();
+        tablaAccesosRecientes = new javax.swing.JTable();
+        panelPersonal = new javax.swing.JPanel();
+        panelFormPersonal = new javax.swing.JPanel();
+        panelCamposForm = new javax.swing.JPanel();
+        lblFormUid = new javax.swing.JLabel();
+        panelUidInput = new javax.swing.JPanel();
+        txtRegUid = new javax.swing.JTextField();
+        btnPegarUltimoUid = new javax.swing.JButton();
+        lblFormNombre = new javax.swing.JLabel();
+        txtRegNombre = new javax.swing.JTextField();
+        lblFormCedula = new javax.swing.JLabel();
+        txtRegCedula = new javax.swing.JTextField();
+        lblFormDepto = new javax.swing.JLabel();
+        txtRegDepto = new javax.swing.JTextField();
+        lblFormCargo = new javax.swing.JLabel();
+        txtRegCargo = new javax.swing.JTextField();
+        lblFormEstado = new javax.swing.JLabel();
+        chkRegActivo = new javax.swing.JCheckBox();
+        panelBotonesForm = new javax.swing.JPanel();
+        btnGuardarUsuario = new javax.swing.JButton();
+        btnLimpiarUsuario = new javax.swing.JButton();
+        btnEliminarUsuario = new javax.swing.JButton();
+        panelTablaPersonal = new javax.swing.JPanel();
+        panelBarraBuscarUsuario = new javax.swing.JPanel();
+        lblBuscarUsuario = new javax.swing.JLabel();
+        txtBuscarUsuario = new javax.swing.JTextField();
+        btnBuscarUsuario = new javax.swing.JButton();
+        btnVerTodosUsuarios = new javax.swing.JButton();
+        jScrollPaneUsuarios = new javax.swing.JScrollPane();
+        tablaUsuarios = new javax.swing.JTable();
+        panelHistorial = new javax.swing.JPanel();
+        panelFiltrosHistorial = new javax.swing.JPanel();
+        lblFiltroBuscar = new javax.swing.JLabel();
+        txtBuscarHistorial = new javax.swing.JTextField();
+        lblFiltroTipo = new javax.swing.JLabel();
+        cbFiltroTipo = new javax.swing.JComboBox<>();
+        lblFiltroEstado = new javax.swing.JLabel();
+        cbFiltroEstado = new javax.swing.JComboBox<>();
+        btnFiltrarHistorial = new javax.swing.JButton();
+        btnLimpiarFiltroHistorial = new javax.swing.JButton();
+        btnGenerarReporte = new javax.swing.JButton();
+        jScrollPaneHistorial = new javax.swing.JScrollPane();
+        tablaHistorial = new javax.swing.JTable();
+        panelStatusBar = new javax.swing.JPanel();
+        lblInfo = new javax.swing.JLabel();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle("Sistema de Control de Acceso y Asistencia con RFID");
+        setMinimumSize(new java.awt.Dimension(980, 680));
+
+        panelSuperior.setBackground(new java.awt.Color(33, 43, 54));
+        panelSuperior.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 18, 12, 18));
+        panelSuperior.setLayout(new java.awt.BorderLayout());
+
+        lblTitulo.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        lblTitulo.setForeground(new java.awt.Color(255, 255, 255));
+        lblTitulo.setText("SISTEMA DE CONTROL DE ACCESO Y ASISTENCIA RFID");
+        panelSuperior.add(lblTitulo, java.awt.BorderLayout.LINE_START);
+
+        lblEstadoConexion.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblEstadoConexion.setForeground(new java.awt.Color(224, 224, 224));
+        lblEstadoConexion.setText("● Buscando lector RFID...");
+        panelSuperior.add(lblEstadoConexion, java.awt.BorderLayout.LINE_END);
+
+        getContentPane().add(panelSuperior, java.awt.BorderLayout.PAGE_START);
+
+        tabbedPane.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+
+        panelMonitoreo.setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        panelMonitoreo.setLayout(new java.awt.BorderLayout(15, 15));
+
+        panelIzquierdoMonitoreo.setPreferredSize(new java.awt.Dimension(480, 0));
+        panelIzquierdoMonitoreo.setLayout(new java.awt.BorderLayout(10, 10));
+
+        panelEstadoAcceso.setBackground(new java.awt.Color(52, 73, 94));
+        panelEstadoAcceso.setBorder(javax.swing.BorderFactory.createCompoundBorder());
+        panelEstadoAcceso.setLayout(new java.awt.BorderLayout());
+
+        lblTituloResultado.setFont(new java.awt.Font("Segoe UI", 1, 20)); // NOI18N
+        lblTituloResultado.setForeground(new java.awt.Color(255, 255, 255));
+        lblTituloResultado.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        lblTituloResultado.setText("ESPERANDO LECTURA RFID");
+        panelEstadoAcceso.add(lblTituloResultado, java.awt.BorderLayout.PAGE_START);
+
+        panelDetalles.setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 10, 5, 10));
+        panelDetalles.setOpaque(false);
+        panelDetalles.setLayout(new java.awt.GridLayout(7, 2, 8, 8));
+
+        lblClaveNombre.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblClaveNombre.setForeground(new java.awt.Color(220, 220, 220));
+        lblClaveNombre.setText("Persona:");
+        panelDetalles.add(lblClaveNombre);
+
+        lblNombreDetectado.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        lblNombreDetectado.setForeground(new java.awt.Color(255, 255, 255));
+        lblNombreDetectado.setText("---");
+        panelDetalles.add(lblNombreDetectado);
+
+        lblClaveUid.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblClaveUid.setForeground(new java.awt.Color(220, 220, 220));
+        lblClaveUid.setText("UID Llave:");
+        panelDetalles.add(lblClaveUid);
+
+        lblUidDetectado.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblUidDetectado.setForeground(new java.awt.Color(255, 255, 255));
+        lblUidDetectado.setText("---");
+        panelDetalles.add(lblUidDetectado);
+
+        lblClaveHora.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblClaveHora.setForeground(new java.awt.Color(220, 220, 220));
+        lblClaveHora.setText("Hora Marcada:");
+        panelDetalles.add(lblClaveHora);
+
+        lblHoraDetectada.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        lblHoraDetectada.setForeground(new java.awt.Color(255, 255, 255));
+        lblHoraDetectada.setText("---");
+        panelDetalles.add(lblHoraDetectada);
+
+        lblClaveTipo.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblClaveTipo.setForeground(new java.awt.Color(220, 220, 220));
+        lblClaveTipo.setText("Turno / Tipo:");
+        panelDetalles.add(lblClaveTipo);
+
+        lblTipoDetectado.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblTipoDetectado.setForeground(new java.awt.Color(255, 255, 255));
+        lblTipoDetectado.setText("---");
+        panelDetalles.add(lblTipoDetectado);
+
+        lblClaveHorarioOficial.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblClaveHorarioOficial.setForeground(new java.awt.Color(220, 220, 220));
+        lblClaveHorarioOficial.setText("Horario Oficial:");
+        panelDetalles.add(lblClaveHorarioOficial);
+
+        lblHorarioOficialDetectado.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblHorarioOficialDetectado.setForeground(new java.awt.Color(255, 255, 255));
+        lblHorarioOficialDetectado.setText("---");
+        panelDetalles.add(lblHorarioOficialDetectado);
+
+        lblClavePuntualidad.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblClavePuntualidad.setForeground(new java.awt.Color(220, 220, 220));
+        lblClavePuntualidad.setText("Puntualidad:");
+        panelDetalles.add(lblClavePuntualidad);
+
+        lblPuntualidadDetectada.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblPuntualidadDetectada.setForeground(new java.awt.Color(255, 255, 255));
+        lblPuntualidadDetectada.setText("---");
+        panelDetalles.add(lblPuntualidadDetectada);
+
+        lblClaveMulta.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblClaveMulta.setForeground(new java.awt.Color(220, 220, 220));
+        lblClaveMulta.setText("Cobro / Multa:");
+        panelDetalles.add(lblClaveMulta);
+
+        lblMultaDetectada.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
+        lblMultaDetectada.setForeground(new java.awt.Color(255, 255, 0));
+        lblMultaDetectada.setText("$0.00");
+        panelDetalles.add(lblMultaDetectada);
+
+        panelEstadoAcceso.add(panelDetalles, java.awt.BorderLayout.CENTER);
+
+        panelIzquierdoMonitoreo.add(panelEstadoAcceso, java.awt.BorderLayout.PAGE_START);
+
+        panelReglasHorario.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Horarios de Trabajo y Cobro ($3/hora)", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Segoe UI", 1, 12))); // NOI18N
+        panelReglasHorario.setLayout(new java.awt.GridLayout(4, 1, 6, 6));
+
+        lblRegla1.setText("• Turno Mañana: Entrada 07:00 AM  |  Salida 01:00 PM (13:00)");
+        panelReglasHorario.add(lblRegla1);
+
+        lblRegla2.setText("• Turno Tarde: Entrada 02:00 PM (14:00)  |  Salida 08:00 PM (20:00)");
+        panelReglasHorario.add(lblRegla2);
+
+        lblRegla3.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        lblRegla3.setForeground(new java.awt.Color(192, 57, 43));
+        lblRegla3.setText("• Penalización: $3.00 USD por cada hora de atraso o salida anticipada.");
+        panelReglasHorario.add(lblRegla3);
+
+        panelFilaSimulador.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0));
+
+        chkCooldown.setSelected(true);
+        chkCooldown.setText("Filtro (10s)");
+        chkCooldown.setToolTipText("Evitar lecturas dobles en 10 segundos");
+        panelFilaSimulador.add(chkCooldown);
+
+        lblSimularTexto.setText("Probar UID:");
+        panelFilaSimulador.add(lblSimularTexto);
+
+        txtSimularUid.setColumns(8);
+        panelFilaSimulador.add(txtSimularUid);
+
+        btnSimularLectura.setText("Simular Lectura");
+        btnSimularLectura.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSimularLecturaActionPerformed(evt);
+            }
+        });
+        panelFilaSimulador.add(btnSimularLectura);
+
+        panelReglasHorario.add(panelFilaSimulador);
+
+        panelIzquierdoMonitoreo.add(panelReglasHorario, java.awt.BorderLayout.CENTER);
+
+        panelMonitoreo.add(panelIzquierdoMonitoreo, java.awt.BorderLayout.LINE_START);
+
+        panelDerechoMonitoreo.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Marcaciones Registradas Hoy", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Segoe UI", 1, 12))); // NOI18N
+        panelDerechoMonitoreo.setLayout(new java.awt.BorderLayout());
+
+        tablaAccesosRecientes.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "Hora", "Nombre", "Turno / Tipo", "Horario", "Puntualidad", "Multa ($)"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        tablaAccesosRecientes.setRowHeight(24);
+        jScrollPaneRecientes.setViewportView(tablaAccesosRecientes);
+
+        panelDerechoMonitoreo.add(jScrollPaneRecientes, java.awt.BorderLayout.CENTER);
+
+        panelMonitoreo.add(panelDerechoMonitoreo, java.awt.BorderLayout.CENTER);
+
+        tabbedPane.addTab("Control de Acceso", panelMonitoreo);
+
+        panelPersonal.setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        panelPersonal.setLayout(new java.awt.BorderLayout(15, 15));
+
+        panelFormPersonal.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Datos del Empleado y Tarjeta", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Segoe UI", 1, 12))); // NOI18N
+        panelFormPersonal.setPreferredSize(new java.awt.Dimension(380, 0));
+        panelFormPersonal.setLayout(new java.awt.BorderLayout());
+
+        panelCamposForm.setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        panelCamposForm.setLayout(new java.awt.GridLayout(6, 2, 8, 12));
+
+        lblFormUid.setText("UID Tarjeta: *");
+        panelCamposForm.add(lblFormUid);
+
+        panelUidInput.setLayout(new java.awt.BorderLayout(5, 0));
+        panelUidInput.add(txtRegUid, java.awt.BorderLayout.CENTER);
+
+        btnPegarUltimoUid.setText("Último");
+        btnPegarUltimoUid.setToolTipText("Pegar última tarjeta leída");
+        btnPegarUltimoUid.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnPegarUltimoUidActionPerformed(evt);
+            }
+        });
+        panelUidInput.add(btnPegarUltimoUid, java.awt.BorderLayout.LINE_END);
+
+        panelCamposForm.add(panelUidInput);
+
+        lblFormNombre.setText("Nombre Completo: *");
+        panelCamposForm.add(lblFormNombre);
+        panelCamposForm.add(txtRegNombre);
+
+        lblFormCedula.setText("Cédula / DNI:");
+        panelCamposForm.add(lblFormCedula);
+        panelCamposForm.add(txtRegCedula);
+
+        lblFormDepto.setText("Departamento:");
+        panelCamposForm.add(lblFormDepto);
+        panelCamposForm.add(txtRegDepto);
+
+        lblFormCargo.setText("Cargo:");
+        panelCamposForm.add(lblFormCargo);
+        panelCamposForm.add(txtRegCargo);
+
+        lblFormEstado.setText("Estado:");
+        panelCamposForm.add(lblFormEstado);
+
+        chkRegActivo.setSelected(true);
+        chkRegActivo.setText("Usuario Activo");
+        panelCamposForm.add(chkRegActivo);
+
+        panelFormPersonal.add(panelCamposForm, java.awt.BorderLayout.PAGE_START);
+
+        panelBotonesForm.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 10, 10));
+
+        btnGuardarUsuario.setFont(new java.awt.Font("Segoe UI", 1, 12));
+        btnGuardarUsuario.setForeground(new java.awt.Color(15, 76, 129));
+        btnGuardarUsuario.setText("Guardar / Actualizar");
+        btnGuardarUsuario.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnGuardarUsuarioActionPerformed(evt);
+            }
+        });
+        panelBotonesForm.add(btnGuardarUsuario);
+
+        btnLimpiarUsuario.setText("Limpiar");
+        btnLimpiarUsuario.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnLimpiarUsuarioActionPerformed(evt);
+            }
+        });
+        panelBotonesForm.add(btnLimpiarUsuario);
+
+        btnEliminarUsuario.setFont(new java.awt.Font("Segoe UI", 1, 12));
+        btnEliminarUsuario.setForeground(new java.awt.Color(180, 25, 25));
+        btnEliminarUsuario.setText("Eliminar");
+        btnEliminarUsuario.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnEliminarUsuarioActionPerformed(evt);
+            }
+        });
+        panelBotonesForm.add(btnEliminarUsuario);
+
+        panelFormPersonal.add(panelBotonesForm, java.awt.BorderLayout.CENTER);
+
+        panelPersonal.add(panelFormPersonal, java.awt.BorderLayout.LINE_START);
+
+        panelTablaPersonal.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Usuarios Registrados", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Segoe UI", 1, 12))); // NOI18N
+        panelTablaPersonal.setLayout(new java.awt.BorderLayout(10, 10));
+
+        panelBarraBuscarUsuario.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 10, 5));
+
+        lblBuscarUsuario.setText("Buscar por Nombre/UID:");
+        panelBarraBuscarUsuario.add(lblBuscarUsuario);
+
+        txtBuscarUsuario.setColumns(18);
+        panelBarraBuscarUsuario.add(txtBuscarUsuario);
+
+        btnBuscarUsuario.setText("Buscar");
+        btnBuscarUsuario.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnBuscarUsuarioActionPerformed(evt);
+            }
+        });
+        panelBarraBuscarUsuario.add(btnBuscarUsuario);
+
+        btnVerTodosUsuarios.setText("Ver Todos");
+        btnVerTodosUsuarios.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnVerTodosUsuariosActionPerformed(evt);
+            }
+        });
+        panelBarraBuscarUsuario.add(btnVerTodosUsuarios);
+
+        panelTablaPersonal.add(panelBarraBuscarUsuario, java.awt.BorderLayout.PAGE_START);
+
+        tablaUsuarios.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "ID", "UID", "Nombre", "Cédula", "Departamento", "Cargo", "Activo", "Fecha"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        tablaUsuarios.setRowHeight(22);
+        jScrollPaneUsuarios.setViewportView(tablaUsuarios);
+
+        panelTablaPersonal.add(jScrollPaneUsuarios, java.awt.BorderLayout.CENTER);
+
+        panelPersonal.add(panelTablaPersonal, java.awt.BorderLayout.CENTER);
+
+        tabbedPane.addTab("Gestión de Personal", panelPersonal);
+
+        panelHistorial.setBorder(javax.swing.BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        panelHistorial.setLayout(new java.awt.BorderLayout(10, 10));
+
+        panelFiltrosHistorial.setBorder(javax.swing.BorderFactory.createEtchedBorder());
+        panelFiltrosHistorial.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 12, 10));
+
+        lblFiltroBuscar.setText("Buscar:");
+        panelFiltrosHistorial.add(lblFiltroBuscar);
+
+        txtBuscarHistorial.setColumns(14);
+        txtBuscarHistorial.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cargarTablaHistorial();
+            }
+        });
+        panelFiltrosHistorial.add(txtBuscarHistorial);
+
+        lblFiltroTipo.setText("Tipo:");
+        panelFiltrosHistorial.add(lblFiltroTipo);
+
+        cbFiltroTipo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "TODOS", "ENTRADA MAÑANA", "SALIDA MAÑANA", "ENTRADA TARDE", "SALIDA TARDE", "ENTRADA ANTICIPADA", "ENTRADA ADICIONAL", "ACCESO DENEGADO" }));
+        panelFiltrosHistorial.add(cbFiltroTipo);
+
+        lblFiltroEstado.setText("Estado:");
+        panelFiltrosHistorial.add(lblFiltroEstado);
+
+        cbFiltroEstado.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "TODOS", "ACCESO PERMITIDO", "ACCESO DENEGADO" }));
+        panelFiltrosHistorial.add(cbFiltroEstado);
+
+        btnFiltrarHistorial.setText("Aplicar Filtro");
+        btnFiltrarHistorial.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnFiltrarHistorialActionPerformed(evt);
+            }
+        });
+        panelFiltrosHistorial.add(btnFiltrarHistorial);
+
+        btnLimpiarFiltroHistorial.setText("Limpiar Filtros");
+        btnLimpiarFiltroHistorial.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnLimpiarFiltroHistorialActionPerformed(evt);
+            }
+        });
+        panelFiltrosHistorial.add(btnLimpiarFiltroHistorial);
+
+        btnGenerarReporte.setFont(new java.awt.Font("Segoe UI", 1, 12));
+        btnGenerarReporte.setForeground(new java.awt.Color(15, 76, 129));
+        btnGenerarReporte.setText("Generar Reporte Jasper (PDF)");
+        btnGenerarReporte.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnGenerarReporteActionPerformed(evt);
+            }
+        });
+        panelFiltrosHistorial.add(btnGenerarReporte);
+
+        panelHistorial.add(panelFiltrosHistorial, java.awt.BorderLayout.PAGE_START);
+
+        tablaHistorial.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "ID", "Fecha y Hora", "UID", "Empleado", "Departamento", "Turno / Tipo", "Horario Oficial", "Puntualidad", "Multa ($)"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        tablaHistorial.setRowHeight(22);
+        jScrollPaneHistorial.setViewportView(tablaHistorial);
+
+        panelHistorial.add(jScrollPaneHistorial, java.awt.BorderLayout.CENTER);
+
+        tabbedPane.addTab("Historial y Reportes", panelHistorial);
+
+        getContentPane().add(tabbedPane, java.awt.BorderLayout.CENTER);
+
+        panelStatusBar.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 0, 0, 0, new java.awt.Color(0, 0, 0)));
+        panelStatusBar.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 15, 6));
+
+        lblInfo.setFont(new java.awt.Font("Segoe UI", 0, 11)); // NOI18N
+        lblInfo.setForeground(new java.awt.Color(64, 64, 64));
+        lblInfo.setText("Turnos: Mañana [07:00 a 13:00]  |  Tarde [14:00 a 20:00]  |  Tarifa por hora de atraso o salida anticipada: $3.00 USD");
+        panelStatusBar.add(lblInfo);
+
+        getContentPane().add(panelStatusBar, java.awt.BorderLayout.PAGE_END);
+
+        pack();
+        setLocationRelativeTo(null);
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void btnSimularLecturaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSimularLecturaActionPerformed
+        String uid = txtSimularUid.getText().trim();
+        if (!uid.isEmpty()) {
+            procesarLecturaRfid(uid);
+        } else {
+            JOptionPane.showMessageDialog(this, "Ingresa un UID para simular.", "Aviso", JOptionPane.WARNING_MESSAGE);
+        }
+    }//GEN-LAST:event_btnSimularLecturaActionPerformed
+
+    private void btnPegarUltimoUidActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnPegarUltimoUidActionPerformed
+        txtRegUid.setText(ultimoUidLeido);
+    }//GEN-LAST:event_btnPegarUltimoUidActionPerformed
+
+    private void btnGuardarUsuarioActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGuardarUsuarioActionPerformed
+        guardarUsuario();
+    }//GEN-LAST:event_btnGuardarUsuarioActionPerformed
+
+    private void btnLimpiarUsuarioActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLimpiarUsuarioActionPerformed
+        limpiarFormularioUsuario();
+    }//GEN-LAST:event_btnLimpiarUsuarioActionPerformed
+
+    private void btnEliminarUsuarioActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEliminarUsuarioActionPerformed
+        eliminarUsuarioSeleccionado();
+    }//GEN-LAST:event_btnEliminarUsuarioActionPerformed
+
+    private void btnBuscarUsuarioActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBuscarUsuarioActionPerformed
+        cargarTablaUsuarios();
+    }//GEN-LAST:event_btnBuscarUsuarioActionPerformed
+
+    private void btnVerTodosUsuariosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnVerTodosUsuariosActionPerformed
+        txtBuscarUsuario.setText("");
+        cargarTablaUsuarios();
+    }//GEN-LAST:event_btnVerTodosUsuariosActionPerformed
+
+    private void btnFiltrarHistorialActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnFiltrarHistorialActionPerformed
+        cargarTablaHistorial();
+    }//GEN-LAST:event_btnFiltrarHistorialActionPerformed
+
+    private void btnLimpiarFiltroHistorialActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLimpiarFiltroHistorialActionPerformed
+        txtBuscarHistorial.setText("");
+        cbFiltroTipo.setSelectedIndex(0);
+        cbFiltroEstado.setSelectedIndex(0);
+        cargarTablaHistorial();
+    }//GEN-LAST:event_btnLimpiarFiltroHistorialActionPerformed
+
+    private void btnGenerarReporteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnGenerarReporteActionPerformed
+        String filtroTexto = txtBuscarHistorial != null ? txtBuscarHistorial.getText().trim() : "";
+        String tipoSeleccionado = (cbFiltroTipo != null && cbFiltroTipo.getSelectedItem() != null)
+                ? cbFiltroTipo.getSelectedItem().toString() : "TODOS";
+        String estadoSeleccionado = (cbFiltroEstado != null && cbFiltroEstado.getSelectedItem() != null)
+                ? cbFiltroEstado.getSelectedItem().toString() : "TODOS";
+
+        String tipoFiltro = (!tipoSeleccionado.isBlank() && !tipoSeleccionado.equalsIgnoreCase("TODOS")) ? tipoSeleccionado : null;
+        String estadoFiltro = (!estadoSeleccionado.isBlank() && !estadoSeleccionado.equalsIgnoreCase("TODOS")) ? estadoSeleccionado : null;
+
+        Reportes.GestorReportes.mostrarReporteAsistencias(this, filtroTexto, tipoFiltro, estadoFiltro);
+    }//GEN-LAST:event_btnGenerarReporteActionPerformed
+
+    private void procesarLecturaRfid(String uid) {
+        String uidLimpio = uid.trim().toUpperCase();
+        ultimoUidLeido = uidLimpio;
+
+        if (chkCooldown.isSelected()) {
+            long ahora = System.currentTimeMillis();
+            if (cooldownLecturas.containsKey(uidLimpio)) {
+                long ultimaVez = cooldownLecturas.get(uidLimpio);
+                if ((ahora - ultimaVez) < COOLDOWN_MS) {
+                    return;
+                }
+            }
+            cooldownLecturas.put(uidLimpio, ahora);
+        }
+
+        RegistroAsistencia reg = controlador.procesarLecturaRfid(uidLimpio);
+        if (reg != null) {
+            if ("EN ESPERA DE ADMIN".equalsIgnoreCase(reg.getEstado())) {
+                registroPendiente = reg;
+                mostrarResultadoEnEsperaAdmin(reg);
+            } else {
+                registroPendiente = null;
+                if (panelAccionAdmin != null) panelAccionAdmin.setVisible(false);
+                boolean accesoPermitido = "ACCESO PERMITIDO".equalsIgnoreCase(reg.getEstado());
+                mostrarResultadoEnPantalla(reg, accesoPermitido);
+                agregarFilaReciente(reg);
+                cargarTablaHistorial();
+            }
+        }
+    }
+
+    private void mostrarResultadoEnEsperaAdmin(RegistroAsistencia reg) {
+        lblNombreDetectado.setText(reg.getNombre());
+        lblUidDetectado.setText(reg.getUid());
+        lblHoraDetectada.setText(reg.getFechaHora().length() >= 19 ? reg.getFechaHora().substring(11) : reg.getFechaHora());
+        lblTipoDetectado.setText(reg.getTipo());
+        lblHorarioOficialDetectado.setText(reg.getHorarioEsperado());
+        lblPuntualidadDetectada.setText(reg.getDetallePuntualidad());
+        lblMultaDetectada.setText("EN ESPERA");
+        lblMultaDetectada.setForeground(java.awt.Color.WHITE);
+
+        panelEstadoAcceso.setBackground(new java.awt.Color(230, 126, 34)); // Ámbar / Naranja alerta
+        lblTituloResultado.setText("[!] ESPERANDO AUTORIZACIÓN ADMIN");
+        actualizarVisibilidadAccionAdmin();
+        if (timerResetEstado != null) {
+            timerResetEstado.stop();
+        }
+    }
+
+    private void actualizarVisibilidadAccionAdmin() {
+        if (registroPendiente == null) {
+            if (panelAccionAdmin != null) panelAccionAdmin.setVisible(false);
+            return;
+        }
+
+        if (panelAccionAdmin == null) return;
+        panelAccionAdmin.setVisible(true);
+
+        if (adminAutenticado) {
+            lblAvisoEsperaAdmin.setVisible(false);
+            btnAbrirLoginRapido.setVisible(false);
+            btnAutorizarPaso.setVisible(true);
+            btnDenegarPaso.setVisible(true);
+        } else {
+            lblAvisoEsperaAdmin.setVisible(true);
+            btnAbrirLoginRapido.setVisible(true);
+            btnAutorizarPaso.setVisible(false);
+            btnDenegarPaso.setVisible(false);
+        }
+        panelEstadoAcceso.revalidate();
+        panelEstadoAcceso.repaint();
+    }
+
+    private void autorizarPasoPendiente() {
+        if (registroPendiente == null) return;
+
+        Empleado emp = controlador.buscarEmpleadoPorUid(registroPendiente.getUid());
+        DialogoVerificacionFacial dlg = new DialogoVerificacionFacial(this, registroPendiente, emp);
+        dlg.setVisible(true);
+
+        if (dlg.isAutorizado()) {
+            controlador.autorizarAccesoExcepcional(registroPendiente);
+            if (panelAccionAdmin != null) {
+                panelAccionAdmin.setVisible(false);
+            }
+            panelEstadoAcceso.setBackground(new java.awt.Color(39, 174, 96));
+            lblTituloResultado.setText("ACCESO AUTORIZADO POR ADMIN");
+            lblTipoDetectado.setText(registroPendiente.getTipo());
+            lblPuntualidadDetectada.setText(registroPendiente.getDetallePuntualidad());
+            lblMultaDetectada.setText("$0.00 (Sin multa)");
+            lblMultaDetectada.setForeground(new java.awt.Color(190, 255, 190));
+            agregarFilaReciente(registroPendiente);
+            cargarTablaHistorial();
+            registroPendiente = null;
+            if (timerResetEstado != null) {
+                timerResetEstado.restart();
+            }
+        } else if (dlg.isRechazado()) {
+            denegarPasoPendiente();
+        }
+    }
+
+    private void denegarPasoPendiente() {
+        if (registroPendiente == null) return;
+        controlador.denegarAccesoExcepcional(registroPendiente);
+        if (panelAccionAdmin != null) {
+            panelAccionAdmin.setVisible(false);
+        }
+        panelEstadoAcceso.setBackground(new java.awt.Color(192, 57, 43));
+        lblTituloResultado.setText("ACCESO DENEGADO POR ADMIN");
+        lblTipoDetectado.setText(registroPendiente.getTipo());
+        lblPuntualidadDetectada.setText(registroPendiente.getDetallePuntualidad());
+        lblMultaDetectada.setText("-");
+        lblMultaDetectada.setForeground(java.awt.Color.WHITE);
+        agregarFilaReciente(registroPendiente);
+        cargarTablaHistorial();
+        registroPendiente = null;
+        if (timerResetEstado != null) {
+            timerResetEstado.restart();
+        }
+    }
+
+    private void mostrarResultadoEnPantalla(RegistroAsistencia reg, boolean permitido) {
+        if (panelAccionAdmin != null) {
+            panelAccionAdmin.setVisible(false);
+        }
+        lblNombreDetectado.setText(reg.getNombre());
+        lblUidDetectado.setText(reg.getUid());
+        lblHoraDetectada.setText(reg.getFechaHora().length() >= 19 ? reg.getFechaHora().substring(11) : reg.getFechaHora());
+        lblTipoDetectado.setText(reg.getTipo());
+        lblHorarioOficialDetectado.setText(reg.getHorarioEsperado());
+        lblPuntualidadDetectada.setText(reg.getDetallePuntualidad());
+
+        if (permitido) {
+            if (reg.getMulta() > 0) {
+                panelEstadoAcceso.setBackground(new java.awt.Color(211, 84, 0)); // Naranja alerta
+                String accion = reg.getTipo().startsWith("ENTRADA") ? "CON ATRASO" : "SALIDA ANTICIPADA";
+                lblTituloResultado.setText( reg.getTipo() + " - " + accion);
+                lblMultaDetectada.setText(String.format(Locale.US, "$%.2f USD", reg.getMulta()));
+                lblMultaDetectada.setForeground(new java.awt.Color(255, 240, 120));
+            } else {
+                panelEstadoAcceso.setBackground(new java.awt.Color(39, 174, 96)); // Verde éxito
+                lblTituloResultado.setText( reg.getTipo() + " - A TIEMPO");
+                lblMultaDetectada.setText("$0.00 (Sin multa)");
+                lblMultaDetectada.setForeground(new java.awt.Color(190, 255, 190));
+            }
+        } else {
+            panelEstadoAcceso.setBackground(new java.awt.Color(192, 57, 43)); // Rojo denegado
+            lblTituloResultado.setText(" ACCESO DENEGADO");
+            lblMultaDetectada.setText("-");
+            lblMultaDetectada.setForeground(java.awt.Color.WHITE);
+        }
+
+        if (timerResetEstado != null) {
+            timerResetEstado.restart();
+        }
+    }
+
+    private void iniciarTimerResetEstado() {
+        timerResetEstado = new Timer(5000, e -> {
+            if (registroPendiente == null) {
+                if (panelAccionAdmin != null) {
+                    panelAccionAdmin.setVisible(false);
+                }
+                panelEstadoAcceso.setBackground(new java.awt.Color(52, 73, 94));
+                lblTituloResultado.setText("ESPERANDO LECTURA RFID");
+            }
+        });
+        timerResetEstado.setRepeats(false);
+    }
+
+    private void iniciarTimerRelojSistema() {
+        timerRelojSistema = new Timer(1000, e -> {
+            if (lblRelojSistema != null) {
+                lblRelojSistema.setText("Hora: " + com.controlacceso.modelos.RelojSistema.getHoraFormateada());
+            }
+        });
+        timerRelojSistema.start();
+    }
+
+    private void actualizarVisibilidadTabsAdmin() {
+        if (adminAutenticado) {
+            // Mostrar pestañas administrativas y barra de simulación
+            if (tabbedPane.indexOfComponent(panelPersonal) == -1) {
+                tabbedPane.addTab("Gestión de Personal", panelPersonal);
+            }
+            if (tabbedPane.indexOfComponent(panelHistorial) == -1) {
+                tabbedPane.addTab("Historial y Reportes", panelHistorial);
+            }
+            if (panelFilaSimulador != null) {
+                panelFilaSimulador.setVisible(true);
+            }
+            btnSesionAdmin.setText("Cerrar Sesión Admin");
+            btnSesionAdmin.setForeground(new Color(180, 25, 25)); // Rojo para logout
+            btnSesionAdmin.setToolTipText("Sesión de administrador activa. Clic para bloquear.");
+        } else {
+            // Ocultar pestañas administrativas y barra de pruebas: solo se muestra el escaneador puro
+            if (tabbedPane.indexOfComponent(panelPersonal) != -1) {
+                tabbedPane.remove(panelPersonal);
+            }
+            if (tabbedPane.indexOfComponent(panelHistorial) != -1) {
+                tabbedPane.remove(panelHistorial);
+            }
+            if (panelFilaSimulador != null) {
+                panelFilaSimulador.setVisible(false);
+            }
+            tabbedPane.setSelectedIndex(0);
+            btnSesionAdmin.setText("Acceso Admin");
+            btnSesionAdmin.setForeground(new Color(15, 76, 129)); // Azul
+            btnSesionAdmin.setToolTipText("Haga clic para autenticarse como administrador.");
+        }
+    }
+
+    private void accionarBotonAdmin() {
+        if (!adminAutenticado) {
+            DialogoLoginAdmin dlg = new DialogoLoginAdmin(this);
+            dlg.setVisible(true);
+            if (dlg.isAutenticado()) {
+                adminAutenticado = true;
+                actualizarVisibilidadTabsAdmin();
+                actualizarVisibilidadAccionAdmin();
+                if (registroPendiente != null) {
+                    tabbedPane.setSelectedComponent(panelMonitoreo);
+                } else {
+                    tabbedPane.setSelectedComponent(panelPersonal);
+                }
+            }
+        } else {
+            adminAutenticado = false;
+            actualizarVisibilidadTabsAdmin();
+            actualizarVisibilidadAccionAdmin();
+        }
+    }
+
+    private void cargarTablaAccesosRecientes() {
+        if (modeloAccesosRecientes == null) return;
+        modeloAccesosRecientes.setRowCount(0);
+        List<RegistroAsistencia> lista = controlador.listarAsistenciasHoy();
+        if (lista != null) {
+            for (RegistroAsistencia r : lista) {
+                String horaCorta = r.getFechaHora().length() >= 19 ? r.getFechaHora().substring(11) : r.getFechaHora();
+                String multaStr = r.getMulta() > 0 ? String.format(Locale.US, "$%.2f", r.getMulta()) : "$0.00";
+                modeloAccesosRecientes.addRow(new Object[]{
+                    horaCorta,
+                    r.getNombre(),
+                    r.getTipo(),
+                    r.getHorarioEsperado(),
+                    r.getDetallePuntualidad(),
+                    multaStr
+                });
+            }
+        }
+    }
+
+    private void agregarFilaReciente(RegistroAsistencia r) {
+        String horaCorta = r.getFechaHora().length() >= 19 ? r.getFechaHora().substring(11) : r.getFechaHora();
+        String multaStr = r.getMulta() > 0 ? String.format(Locale.US, "$%.2f", r.getMulta()) : "$0.00";
+        modeloAccesosRecientes.insertRow(0, new Object[]{
+            horaCorta,
+            r.getNombre(),
+            r.getTipo(),
+            r.getHorarioEsperado(),
+            r.getDetallePuntualidad(),
+            multaStr
+        });
+        if (modeloAccesosRecientes.getRowCount() > 25) {
+            modeloAccesosRecientes.removeRow(modeloAccesosRecientes.getRowCount() - 1);
+        }
+    }
+
+    // =========================================================================
+    // MÉTODOS CRUD USUARIOS Y GESTIÓN DE FOTO
+    // =========================================================================
+    private JPanel crearPanelFotoEmpleado() {
+        JPanel panelFoto = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 6));
+        panelFoto.setOpaque(false);
+
+        lblPreviewFoto = new JLabel("", SwingConstants.CENTER) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (getIcon() == null) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setColor(new Color(150, 160, 175));
+                    g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                    FontMetrics fm = g2.getFontMetrics();
+                    String t = "📷 Sin Foto";
+                    int tx = (getWidth() - fm.stringWidth(t)) / 2;
+                    int ty = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+                    g2.drawString(t, tx, ty);
+                    g2.dispose();
+                }
+            }
+        };
+        lblPreviewFoto.setPreferredSize(new Dimension(105, 115));
+        lblPreviewFoto.setOpaque(true);
+        lblPreviewFoto.setBackground(new Color(240, 244, 248));
+        lblPreviewFoto.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 210, 225), 1, true),
+                BorderFactory.createEmptyBorder(2, 2, 2, 2)
+        ));
+
+        JPanel panelAccionesFoto = new JPanel(new GridLayout(2, 1, 0, 8));
+        panelAccionesFoto.setOpaque(false);
+
+        btnSubirFoto = new JButton("📁 Subir Foto");
+        btnSubirFoto.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnSubirFoto.setBackground(new Color(41, 128, 185));
+        btnSubirFoto.setForeground(Color.WHITE);
+        btnSubirFoto.setOpaque(true);
+        btnSubirFoto.setContentAreaFilled(true);
+        btnSubirFoto.setBorderPainted(false);
+        btnSubirFoto.setFocusPainted(false);
+        btnSubirFoto.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnSubirFoto.addActionListener(e -> seleccionarFotoEmpleado());
+
+        btnQuitarFoto = new JButton("✖ Quitar");
+        btnQuitarFoto.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btnQuitarFoto.setBackground(new Color(230, 235, 240));
+        btnQuitarFoto.setForeground(new Color(100, 110, 120));
+        btnQuitarFoto.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnQuitarFoto.addActionListener(e -> quitarFotoEmpleado());
+
+        panelAccionesFoto.add(btnSubirFoto);
+        panelAccionesFoto.add(btnQuitarFoto);
+
+        panelFoto.add(lblPreviewFoto);
+        panelFoto.add(panelAccionesFoto);
+        return panelFoto;
+    }
+
+    private void seleccionarFotoEmpleado() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Seleccionar Foto del Empleado");
+        chooser.setAcceptAllFileFilterUsed(false);
+        chooser.addChoosableFileFilter(new FileNameExtensionFilter("Archivos de Imagen (*.jpg, *.jpeg, *.png)", "jpg", "jpeg", "png"));
+
+        int res = chooser.showOpenDialog(this);
+        if (res == JFileChooser.APPROVE_OPTION) {
+            File seleccionado = chooser.getSelectedFile();
+            if (seleccionado != null && seleccionado.exists()) {
+                archivoFotoSeleccionada = seleccionado;
+                fotoModificada = true;
+                mostrarFotoEnPreview(seleccionado);
+            }
+        }
+    }
+
+    private void quitarFotoEmpleado() {
+        archivoFotoSeleccionada = null;
+        fotoModificada = true;
+        if (lblPreviewFoto != null) {
+            lblPreviewFoto.setIcon(null);
+            lblPreviewFoto.setText("");
+            lblPreviewFoto.repaint();
+        }
+    }
+
+    private void mostrarFotoEnPreview(File archivo) {
+        if (lblPreviewFoto == null) return;
+        if (archivo == null || !archivo.exists()) {
+            lblPreviewFoto.setIcon(null);
+            lblPreviewFoto.setText("");
+            lblPreviewFoto.repaint();
+            return;
+        }
+        try {
+            BufferedImage img = ImageIO.read(archivo);
+            if (img != null) {
+                int w = lblPreviewFoto.getPreferredSize().width - 6;
+                int h = lblPreviewFoto.getPreferredSize().height - 6;
+                Image scaled = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+                lblPreviewFoto.setIcon(new ImageIcon(scaled));
+                lblPreviewFoto.setText(null);
+            }
+        } catch (Exception ex) {
+            System.err.println("Error al cargar preview de foto: " + ex.getMessage());
+        }
+    }
+
+    private void guardarUsuario() {
+        String uid = txtRegUid.getText().trim().toUpperCase();
+        String nombre = txtRegNombre.getText().trim();
+        String cedula = txtRegCedula.getText().trim();
+        String depto = txtRegDepto.getText().trim();
+        String cargo = txtRegCargo.getText().trim();
+        boolean activo = chkRegActivo.isSelected();
+
+        if (uid.isEmpty() || nombre.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El UID y el Nombre son obligatorios.", "Validación", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Empleado empleado = new Empleado(uid, nombre, cedula, depto, cargo);
+        empleado.setActivo(activo);
+
+        // Guardar o mantener la foto del empleado en fotos_empleados/
+        File dirFotos = new File("fotos_empleados");
+        if (!dirFotos.exists()) {
+            dirFotos.mkdirs();
+        }
+
+        Empleado existente = controlador.buscarEmpleadoPorUid(uid);
+        String rutaFotoFinal = (existente != null) ? existente.getFoto() : null;
+
+        if (fotoModificada) {
+            if (archivoFotoSeleccionada != null) {
+                String nombreOriginal = archivoFotoSeleccionada.getName().toLowerCase();
+                String ext = nombreOriginal.endsWith(".png") ? "png" : "jpg";
+                String nuevoNombre = uid + "." + ext;
+                File archivoDestino = new File(dirFotos, nuevoNombre);
+                try {
+                    Files.copy(archivoFotoSeleccionada.toPath(), archivoDestino.toPath(),
+                            StandardCopyOption.REPLACE_EXISTING);
+                    rutaFotoFinal = "fotos_empleados/" + nuevoNombre;
+                } catch (Exception ex) {
+                    System.err.println("Error al guardar archivo de foto: " + ex.getMessage());
+                }
+            } else {
+                rutaFotoFinal = null;
+            }
+        }
+        empleado.setFoto(rutaFotoFinal);
+
+        boolean exito;
+        if (existente != null) {
+            empleado.setId(existente.getId());
+            exito = controlador.actualizarEmpleado(empleado);
+            if (exito) {
+                JOptionPane.showMessageDialog(this, "Empleado actualizado correctamente.");
+            }
+        } else {
+            exito = controlador.guardarEmpleado(empleado);
+            if (exito) {
+                JOptionPane.showMessageDialog(this, "Empleado registrado con éxito.");
+            }
+        }
+
+        if (exito) {
+            limpiarFormularioUsuario();
+            cargarTablaUsuarios();
+        } else {
+            JOptionPane.showMessageDialog(this, "No se pudo guardar en la base de datos.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void eliminarUsuarioSeleccionado() {
+        String uid = txtRegUid.getText().trim().toUpperCase();
+        if (uid.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Selecciona un empleado de la tabla para eliminar.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(this, "¿Estás seguro de eliminar el empleado con UID " + uid + "?", "Confirmar eliminación", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            Empleado existente = controlador.buscarEmpleadoPorUid(uid);
+            if (existente != null && controlador.eliminarEmpleado(existente.getId())) {
+                if (existente.getFoto() != null) {
+                    try {
+                        new File(existente.getFoto()).delete();
+                    } catch (Exception ignored) {}
+                }
+                JOptionPane.showMessageDialog(this, "Empleado eliminado.");
+                limpiarFormularioUsuario();
+                cargarTablaUsuarios();
+            } else {
+                JOptionPane.showMessageDialog(this, "Error al eliminar empleado.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void limpiarFormularioUsuario() {
+        txtRegUid.setText("");
+        txtRegNombre.setText("");
+        txtRegCedula.setText("");
+        txtRegDepto.setText("");
+        txtRegCargo.setText("");
+        chkRegActivo.setSelected(true);
+        quitarFotoEmpleado();
+        fotoModificada = false;
+        tablaUsuarios.clearSelection();
+    }
+
+    private void cargarTablaUsuarios() {
+        modeloUsuarios.setRowCount(0);
+        String busqueda = txtBuscarUsuario.getText().trim().toLowerCase();
+        List<Empleado> lista = controlador.listarEmpleados();
+        for (Empleado u : lista) {
+            if (busqueda.isEmpty() || u.getNombre().toLowerCase().contains(busqueda) || u.getUid().toLowerCase().contains(busqueda)) {
+                modeloUsuarios.addRow(new Object[]{
+                    u.getId(),
+                    u.getUid(),
+                    u.getNombre(),
+                    u.getCedula(),
+                    u.getDepartamento(),
+                    u.getCargo(),
+                    u.isActivo() ? "Sí" : "No",
+                    u.getCreadoEn()
+                });
+            }
+        }
+    }
+
+    private void cargarUsuarioSeleccionadoEnFormulario() {
+        int fila = tablaUsuarios.getSelectedRow();
+        if (fila >= 0) {
+            String uid = (String) modeloUsuarios.getValueAt(fila, 1);
+            txtRegUid.setText(uid);
+            txtRegNombre.setText((String) modeloUsuarios.getValueAt(fila, 2));
+            txtRegCedula.setText((String) modeloUsuarios.getValueAt(fila, 3));
+            txtRegDepto.setText((String) modeloUsuarios.getValueAt(fila, 4));
+            txtRegCargo.setText((String) modeloUsuarios.getValueAt(fila, 5));
+            String activo = (String) modeloUsuarios.getValueAt(fila, 6);
+            chkRegActivo.setSelected("Sí".equals(activo));
+
+            archivoFotoSeleccionada = null;
+            fotoModificada = false;
+
+            Empleado emp = controlador.buscarEmpleadoPorUid(uid);
+            if (emp != null && emp.getFoto() != null && !emp.getFoto().isBlank()) {
+                File f = new File(emp.getFoto());
+                if (f.exists()) {
+                    mostrarFotoEnPreview(f);
+                } else {
+                    quitarFotoEmpleado();
+                    fotoModificada = false;
+                }
+            } else {
+                quitarFotoEmpleado();
+                fotoModificada = false;
+            }
+        }
+    }
+
+    // =========================================================================
+    // MÉTODOS HISTORIAL Y EXPORTACIÓN
+    // =========================================================================
+    private void cargarTablaHistorial() {
+        modeloHistorial.setRowCount(0);
+        String filtroTexto = txtBuscarHistorial != null ? txtBuscarHistorial.getText().trim() : "";
+        String tipoSeleccionado = (cbFiltroTipo != null && cbFiltroTipo.getSelectedItem() != null)
+                ? cbFiltroTipo.getSelectedItem().toString() : "TODOS";
+        String estadoSeleccionado = (cbFiltroEstado != null && cbFiltroEstado.getSelectedItem() != null)
+                ? cbFiltroEstado.getSelectedItem().toString() : "TODOS";
+
+        String tipoFiltro = (!tipoSeleccionado.isBlank() && !tipoSeleccionado.equalsIgnoreCase("TODOS")) ? tipoSeleccionado : null;
+        String estadoFiltro = (!estadoSeleccionado.isBlank() && !estadoSeleccionado.equalsIgnoreCase("TODOS")) ? estadoSeleccionado : null;
+
+        List<RegistroAsistencia> lista = controlador.listarAsistenciasPorFiltros(null, filtroTexto, tipoFiltro, estadoFiltro);
+        for (RegistroAsistencia r : lista) {
+            String multaStr = String.format(Locale.US, "$%.2f", r.getMulta());
+            modeloHistorial.addRow(new Object[]{
+                r.getId(),
+                r.getFechaHora(),
+                r.getUid(),
+                r.getNombre(),
+                r.getDepartamento(),
+                r.getTipo(),
+                r.getHorarioEsperado(),
+                r.getDetallePuntualidad(),
+                multaStr
+            });
+        }
+    }
+
+
+
+    // =========================================================================
+    // EVENTOS SERIAL
+    // =========================================================================
+    @Override
+    public void onUidReceived(String uid) {
+        procesarLecturaRfid(uid);
+    }
+
+    @Override
+    public void onPortStateChanged(boolean conectado, String mensaje) {
+        if (conectado) {
+            lblEstadoConexion.setText("● " + mensaje);
+            lblEstadoConexion.setForeground(new java.awt.Color(46, 204, 113)); // Verde
+        } else {
+            lblEstadoConexion.setText("● Buscando lector RFID...");
+            lblEstadoConexion.setForeground(new java.awt.Color(200, 200, 200)); // Gris claro
+        }
+    }
+
+    @Override
+    public void onLogMessage(String log) {
+        // Log interno (el terminal serial fue removido según lo solicitado)
+    }
+
+    private void personalizarRendererTablaRecientes(JTable tabla) {
+        tabla.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    Object puntualidad = table.getValueAt(row, 4);
+                    Object multa = table.getValueAt(row, 5);
+                    if (puntualidad != null && (puntualidad.toString().contains("ATRASO") || puntualidad.toString().contains("ANTICIPADA"))) {
+                        c.setBackground(new java.awt.Color(254, 243, 230)); // Suave naranja
+                        c.setForeground(new java.awt.Color(180, 70, 0));
+                    } else if (multa != null && !multa.toString().equals("$0.00") && !multa.toString().equals("-")) {
+                        c.setBackground(new java.awt.Color(254, 243, 230));
+                        c.setForeground(new java.awt.Color(180, 70, 0));
+                    } else if (puntualidad != null && puntualidad.toString().contains("A TIEMPO")) {
+                        c.setBackground(new java.awt.Color(235, 250, 238)); // Suave verde
+                        c.setForeground(new java.awt.Color(20, 120, 45));
+                    } else {
+                        c.setBackground(java.awt.Color.WHITE);
+                        c.setForeground(java.awt.Color.BLACK);
+                    }
+                }
+                return c;
+            }
+        });
+    }
+
+    private void personalizarRendererTablaHistorial(JTable tabla) {
+        tabla.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    Object tipoObj = table.getValueAt(row, 5);
+                    Object detalleObj = table.getValueAt(row, 7);
+                    Object multaObj = table.getValueAt(row, 8);
+
+                    boolean esDenegado = (tipoObj != null && tipoObj.toString().contains("DENEGADO"))
+                            || (detalleObj != null && detalleObj.toString().contains("NO VALIDA"));
+                    boolean tieneMulta = false;
+                    if (multaObj != null) {
+                        String mStr = multaObj.toString().replace("$", "").trim();
+                        try {
+                            double mVal = Double.parseDouble(mStr);
+                            if (mVal > 0) {
+                                tieneMulta = true;
+                            }
+                        } catch (NumberFormatException ignored) {}
+                    }
+
+                    if (esDenegado || tieneMulta) {
+                        c.setBackground(new java.awt.Color(255, 240, 240));
+                        c.setForeground(new java.awt.Color(180, 20, 20));
+                    } else {
+                        c.setBackground(java.awt.Color.WHITE);
+                        c.setForeground(java.awt.Color.BLACK);
+                    }
+                }
+                return c;
+            }
+        });
+    }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnBuscarUsuario;
+    private javax.swing.JButton btnEliminarUsuario;
+    private javax.swing.JButton btnGenerarReporte;
+    private javax.swing.JButton btnFiltrarHistorial;
+    private javax.swing.JButton btnGuardarUsuario;
+    private javax.swing.JButton btnLimpiarFiltroHistorial;
+    private javax.swing.JButton btnLimpiarUsuario;
+    private javax.swing.JButton btnPegarUltimoUid;
+    private javax.swing.JButton btnSimularLectura;
+    private javax.swing.JButton btnVerTodosUsuarios;
+    private javax.swing.JComboBox<String> cbFiltroEstado;
+    private javax.swing.JComboBox<String> cbFiltroTipo;
+    private javax.swing.JCheckBox chkCooldown;
+    private javax.swing.JCheckBox chkRegActivo;
+    private javax.swing.JScrollPane jScrollPaneHistorial;
+    private javax.swing.JScrollPane jScrollPaneRecientes;
+    private javax.swing.JScrollPane jScrollPaneUsuarios;
+    private javax.swing.JLabel lblBuscarUsuario;
+    private javax.swing.JLabel lblClaveHora;
+    private javax.swing.JLabel lblClaveHorarioOficial;
+    private javax.swing.JLabel lblClaveMulta;
+    private javax.swing.JLabel lblClaveNombre;
+    private javax.swing.JLabel lblClavePuntualidad;
+    private javax.swing.JLabel lblClaveTipo;
+    private javax.swing.JLabel lblClaveUid;
+    private javax.swing.JLabel lblEstadoConexion;
+    private javax.swing.JLabel lblFiltroBuscar;
+    private javax.swing.JLabel lblFiltroEstado;
+    private javax.swing.JLabel lblFiltroTipo;
+    private javax.swing.JLabel lblFormCargo;
+    private javax.swing.JLabel lblFormCedula;
+    private javax.swing.JLabel lblFormDepto;
+    private javax.swing.JLabel lblFormEstado;
+    private javax.swing.JLabel lblFormNombre;
+    private javax.swing.JLabel lblFormUid;
+    private javax.swing.JLabel lblHoraDetectada;
+    private javax.swing.JLabel lblHorarioOficialDetectado;
+    private javax.swing.JLabel lblInfo;
+    private javax.swing.JLabel lblMultaDetectada;
+    private javax.swing.JLabel lblNombreDetectado;
+    private javax.swing.JLabel lblPuntualidadDetectada;
+    private javax.swing.JLabel lblRegla1;
+    private javax.swing.JLabel lblRegla2;
+    private javax.swing.JLabel lblRegla3;
+    private javax.swing.JLabel lblSimularTexto;
+    private javax.swing.JLabel lblTipoDetectado;
+    private javax.swing.JLabel lblTitulo;
+    private javax.swing.JLabel lblTituloResultado;
+    private javax.swing.JLabel lblUidDetectado;
+    private javax.swing.JPanel panelBarraBuscarUsuario;
+    private javax.swing.JPanel panelBotonesForm;
+    private javax.swing.JPanel panelCamposForm;
+    private javax.swing.JPanel panelDerechoMonitoreo;
+    private javax.swing.JPanel panelDetalles;
+    private javax.swing.JPanel panelEstadoAcceso;
+    private javax.swing.JPanel panelFilaSimulador;
+    private javax.swing.JPanel panelFiltrosHistorial;
+    private javax.swing.JPanel panelFormPersonal;
+    private javax.swing.JPanel panelHistorial;
+    private javax.swing.JPanel panelIzquierdoMonitoreo;
+    private javax.swing.JPanel panelMonitoreo;
+    private javax.swing.JPanel panelPersonal;
+    private javax.swing.JPanel panelReglasHorario;
+    private javax.swing.JPanel panelStatusBar;
+    private javax.swing.JPanel panelSuperior;
+    private javax.swing.JPanel panelTablaPersonal;
+    private javax.swing.JPanel panelUidInput;
+    private javax.swing.JTabbedPane tabbedPane;
+    private javax.swing.JTable tablaAccesosRecientes;
+    private javax.swing.JTable tablaHistorial;
+    private javax.swing.JTable tablaUsuarios;
+    private javax.swing.JTextField txtBuscarHistorial;
+    private javax.swing.JTextField txtBuscarUsuario;
+    private javax.swing.JTextField txtRegCargo;
+    private javax.swing.JTextField txtRegCedula;
+    private javax.swing.JTextField txtRegDepto;
+    private javax.swing.JTextField txtRegNombre;
+    private javax.swing.JTextField txtRegUid;
+    private javax.swing.JTextField txtSimularUid;
+    // End of variables declaration//GEN-END:variables
+
+    public static void main(String args[]) {
+        try {
+            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ex) {
+            java.util.logging.Logger.getLogger(VentanaPrincipal.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+
+        java.awt.EventQueue.invokeLater(() -> {
+            new VentanaPrincipal().setVisible(true);
+        });
+    }
+}
