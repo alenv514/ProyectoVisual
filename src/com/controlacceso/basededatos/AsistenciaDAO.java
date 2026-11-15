@@ -12,7 +12,9 @@ public interface AsistenciaDAO {
 
     List<RegistroAsistencia> listarPorFiltros(String fecha, String nombre);
 
-    List<RegistroAsistencia> listarPorFiltros(String fecha, String nombre, String tipo, String estado);
+    default List<RegistroAsistencia> listarPorFiltros(String fecha, String nombre, String tipo, String estado) {
+        return listarPorFiltros(fecha, nombre);
+    }
 
     List<RegistroAsistencia> listarPorUsuarioYFecha(String uid, String fecha);
 
