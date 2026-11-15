@@ -171,6 +171,13 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         panelFormPersonal.add(panelSuperiorForm, BorderLayout.PAGE_START);
         panelFormPersonal.revalidate();
 
+        panelFilaSimulador.setLayout(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        JButton btnLimpiarHoy = new JButton("Limpiar Hoy");
+        btnLimpiarHoy.setForeground(new Color(180, 25, 25));
+        btnLimpiarHoy.setToolTipText("Borrar las marcaciones de hoy para reiniciar pruebas");
+        btnLimpiarHoy.addActionListener(e -> limpiarMarcasDeHoyUI());
+        panelFilaSimulador.add(btnLimpiarHoy);
+
         iniciarTimerRelojSistema();
 
         // Por estética y seguridad: al inicio solo se muestra la parte de la tarjeta (Control de Acceso)
@@ -1026,6 +1033,37 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         });
         if (modeloAccesosRecientes.getRowCount() > 25) {
             modeloAccesosRecientes.removeRow(modeloAccesosRecientes.getRowCount() - 1);
+        }
+    }
+
+    private void limpiarMarcasDeHoyUI() {
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "¿Deseas eliminar todas las marcaciones registradas hoy para reiniciar las pruebas?",
+                "Confirmar Limpieza de Hoy",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
+        if (confirm == JOptionPane.YES_OPTION) {
+            if (controlador.limpiarMarcasDeHoy()) {
+                cooldownLecturas.clear();
+                registroPendiente = null;
+                if (panelAccionAdmin != null) {
+                    panelAccionAdmin.setVisible(false);
+                }
+                panelEstadoAcceso.setBackground(new Color(52, 73, 94));
+                lblTituloResultado.setText("ESPERANDO LECTURA RFID");
+                lblNombreDetectado.setText("---");
+                lblUidDetectado.setText("---");
+                lblHoraDetectada.setText("---");
+                lblTipoDetectado.setText("---");
+                lblHorarioOficialDetectado.setText("---");
+                lblPuntualidadDetectada.setText("---");
+                lblMultaDetectada.setText("$0.00");
+                lblMultaDetectada.setForeground(new Color(255, 235, 150));
+                cargarTablaAccesosRecientes();
+                cargarTablaHistorial();
+            }
         }
     }
 

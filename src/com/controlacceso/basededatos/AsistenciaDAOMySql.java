@@ -153,6 +153,21 @@ public class AsistenciaDAOMySql implements AsistenciaDAO {
         return lista;
     }
 
+    @Override
+    public boolean eliminarMarcasDeHoy() {
+        String hoy = RelojSistema.fechaActual().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String sql = "DELETE FROM asistencias WHERE fecha_hora LIKE ?";
+        try (Connection conn = Conexion.getConexion();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, hoy + "%");
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            System.err.println("Error al limpiar asistencias de hoy: " + e.getMessage());
+            return false;
+        }
+    }
+
     private RegistroAsistencia mapearAsistencia(ResultSet rs) throws SQLException {
         RegistroAsistencia r = new RegistroAsistencia();
         r.setId(rs.getInt("id"));

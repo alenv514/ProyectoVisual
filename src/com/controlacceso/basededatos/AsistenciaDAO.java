@@ -18,4 +18,8 @@ public interface AsistenciaDAO {
     List<RegistroAsistencia> listarPorFiltros(String fecha, String nombre, String tipo, String estado);
 
     List<RegistroAsistencia> listarPorUsuarioYFecha(String uid, String fecha);
+
+    default boolean eliminarMarcasDeHoy() {
+        return false;
+    }
 }
