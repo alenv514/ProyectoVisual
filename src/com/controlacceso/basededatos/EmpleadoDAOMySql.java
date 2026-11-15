@@ -14,9 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Implementación MySQL (XAMPP) del acceso a datos de Empleados.
- */
+
 public class EmpleadoDAOMySql implements EmpleadoDAO {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

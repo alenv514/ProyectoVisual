@@ -16,9 +16,9 @@ import java.io.DataInputStream;
 import java.io.File;
 
 /**
- * Diálogo modal para visualizar la cámara en vivo del punto de acceso.
- * Permite al Administrador observar la persona frente al lector
- * y decidir si autoriza o deniega el paso.
+ * Diálogo modal para visualización lado a lado:
+ * 1. Izquierda: Foto registrada e identidad del empleado en la Base de Datos.
+ * 2. Derecha: Cámara en vivo en el punto de acceso RFID para comparación visual directa.
  */
 public class DialogoVerificacionFacial extends JDialog {
 
@@ -36,7 +36,7 @@ public class DialogoVerificacionFacial extends JDialog {
     private JLabel lblEstadoCamara;
 
     public DialogoVerificacionFacial(JFrame parent, RegistroAsistencia reg, Empleado emp) {
-        super(parent, "Cámara en Vivo - Administrador", true);
+        super(parent, "Verificación Facial - Administrador", true);
         this.registro = reg;
         this.empleado = emp;
 
@@ -52,7 +52,7 @@ public class DialogoVerificacionFacial extends JDialog {
     }
 
     private void initComponents() {
-        setSize(700, 620);
+        setSize(980, 640);
         setLocationRelativeTo(getParent());
         setLayout(new BorderLayout());
         getContentPane().setBackground(new Color(245, 247, 250));
@@ -62,12 +62,12 @@ public class DialogoVerificacionFacial extends JDialog {
         panelHeader.setBackground(new Color(27, 54, 93)); // Azul institucional
         panelHeader.setBorder(new EmptyBorder(12, 20, 12, 20));
 
-        JLabel lblTitulo = new JLabel("📹 CÁMARA EN VIVO - CONTROL DE ACCESO");
+        JLabel lblTitulo = new JLabel("📹 VERIFICACIÓN FACIAL Y COMPARACIÓN DE IDENTIDAD");
         lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblTitulo.setForeground(Color.WHITE);
 
-        String nom = registro != null ? registro.getNombre() : "---";
-        String uid = registro != null ? registro.getUid() : "---";
+        String nom = registro != null ? registro.getNombre() : (empleado != null ? empleado.getNombre() : "---");
+        String uid = registro != null ? registro.getUid() : (empleado != null ? empleado.getUidTarjeta() : "---");
         String dep = (empleado != null && empleado.getDepartamento() != null) ? empleado.getDepartamento() : (registro != null ? registro.getDepartamento() : "-");
 
         JLabel lblSubtitulo = new JLabel("Persona: " + nom + "  |  UID: " + uid + "  |  Departamento: " + dep);
@@ -87,13 +87,13 @@ public class DialogoVerificacionFacial extends JDialog {
         panelHeader.add(lblEstadoCamara, BorderLayout.EAST);
         add(panelHeader, BorderLayout.NORTH);
 
-        // 2. Contenedor central: Pantalla completa de la Cámara
-        JPanel panelCentro = new JPanel(new BorderLayout());
+        // 2. Contenedor central: Comparación Lado a Lado (Foto de Perfil vs Cámara en Vivo)
+        JPanel panelCentro = new JPanel(new GridLayout(1, 2, 16, 0));
         panelCentro.setOpaque(false);
-        panelCentro.setBorder(new EmptyBorder(15, 20, 15, 20));
+        panelCentro.setBorder(new EmptyBorder(14, 18, 14, 18));
 
-        panelVideo = new PanelVideo();
-        panelCentro.add(panelVideo, BorderLayout.CENTER);
+        panelCentro.add(crearPanelFotoIdentidad());
+        panelCentro.add(crearPanelCamara());
         add(panelCentro, BorderLayout.CENTER);
 
         // 3. Barra de Botones Inferior
@@ -146,6 +146,170 @@ public class DialogoVerificacionFacial extends JDialog {
         panelInferior.add(btnRechazar);
         panelInferior.add(btnCancelar);
         add(panelInferior, BorderLayout.SOUTH);
+    }
+
+    private JPanel crearPanelFotoIdentidad() {
+        JPanel card = new JPanel(new BorderLayout(0, 10));
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(new Color(220, 225, 230), 1, true),
+            new EmptyBorder(12, 16, 12, 16)
+        ));
+
+        // Título del panel
+        JPanel headerFoto = new JPanel(new GridLayout(2, 1, 0, 2));
+        headerFoto.setOpaque(false);
+        JLabel lblTituloFoto = new JLabel("👤 FOTO REGISTRADA (PERFIL OFICIAL)");
+        lblTituloFoto.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblTituloFoto.setForeground(new Color(40, 50, 70));
+
+        JLabel lblSubFoto = new JLabel("Imagen y datos almacenados en la Base de Datos");
+        lblSubFoto.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblSubFoto.setForeground(new Color(120, 130, 145));
+        headerFoto.add(lblTituloFoto);
+        headerFoto.add(lblSubFoto);
+        card.add(headerFoto, BorderLayout.NORTH);
+
+        // Foto centrada
+        JLabel lblFoto = new JLabel();
+        lblFoto.setHorizontalAlignment(SwingConstants.CENTER);
+        lblFoto.setVerticalAlignment(SwingConstants.CENTER);
+        lblFoto.setBackground(new Color(245, 247, 250));
+        lblFoto.setOpaque(true);
+        lblFoto.setBorder(new LineBorder(new Color(210, 215, 225), 1));
+        lblFoto.setPreferredSize(new Dimension(240, 240));
+
+        ImageIcon iconFoto = cargarFotoEmpleado();
+        if (iconFoto != null) {
+            lblFoto.setIcon(iconFoto);
+        } else {
+            lblFoto.setText("<html><center><font color='#888888' size='4'>📷<br>Sin fotografía<br>registrada</font></center></html>");
+        }
+        card.add(lblFoto, BorderLayout.CENTER);
+
+        // Datos del empleado
+        JPanel panelDatos = new JPanel(new GridLayout(5, 1, 0, 4));
+        panelDatos.setOpaque(false);
+        panelDatos.setBorder(new EmptyBorder(8, 4, 2, 4));
+
+        String nombre = empleado != null && empleado.getNombre() != null ? empleado.getNombre() : (registro != null ? registro.getNombre() : "---");
+        String cedula = empleado != null && empleado.getCedula() != null && !empleado.getCedula().isEmpty() ? empleado.getCedula() : "-";
+        String uid = empleado != null && empleado.getUidTarjeta() != null ? empleado.getUidTarjeta() : (registro != null ? registro.getUid() : "-");
+        String depto = empleado != null && empleado.getDepartamento() != null ? empleado.getDepartamento() : (registro != null ? registro.getDepartamento() : "-");
+        String cargo = empleado != null && empleado.getCargo() != null && !empleado.getCargo().isEmpty() ? empleado.getCargo() : "-";
+
+        panelDatos.add(crearFilaDato("Nombre:", nombre, true));
+        panelDatos.add(crearFilaDato("Cédula / DNI:", cedula, false));
+        panelDatos.add(crearFilaDato("UID Tarjeta:", uid, false));
+        panelDatos.add(crearFilaDato("Departamento:", depto, false));
+        panelDatos.add(crearFilaDato("Cargo:", cargo, false));
+
+        card.add(panelDatos, BorderLayout.SOUTH);
+
+        return card;
+    }
+
+    private ImageIcon cargarFotoEmpleado() {
+        java.util.List<File> posiblesArchivos = new java.util.ArrayList<>();
+
+        String rutaBd = empleado != null && empleado.getFoto() != null ? empleado.getFoto().trim() : null;
+        String uid = empleado != null && empleado.getUidTarjeta() != null ? empleado.getUidTarjeta().trim() :
+                     (registro != null && registro.getUid() != null ? registro.getUid().trim() : null);
+
+        String[] baseDirs = new String[]{
+            "",
+            System.getProperty("user.dir") + File.separator,
+            "C:/Users/Acer Predator/Documents/NetBeansProjects/ControlAccesoRFID/",
+            "C:/xampp/htdocs/sistema rdf/"
+        };
+
+        for (String base : baseDirs) {
+            if (rutaBd != null && !rutaBd.isEmpty()) {
+                posiblesArchivos.add(new File(base + rutaBd));
+                posiblesArchivos.add(new File(base + "fotos_empleados/" + new File(rutaBd).getName()));
+            }
+            if (uid != null && !uid.isEmpty()) {
+                posiblesArchivos.add(new File(base + "fotos_empleados/" + uid + ".jpg"));
+                posiblesArchivos.add(new File(base + "fotos_empleados/" + uid + ".png"));
+                posiblesArchivos.add(new File(base + "fotos_empleados/" + uid + ".jpeg"));
+            }
+        }
+
+        for (File f : posiblesArchivos) {
+            if (f != null && f.exists() && f.isFile()) {
+                try {
+                    BufferedImage bimg = ImageIO.read(f);
+                    if (bimg != null) {
+                        int maxW = 260;
+                        int maxH = 260;
+                        double scale = Math.min((double) maxW / bimg.getWidth(), (double) maxH / bimg.getHeight());
+                        int w = Math.max(1, (int) (bimg.getWidth() * scale));
+                        int h = Math.max(1, (int) (bimg.getHeight() * scale));
+                        Image scaled = bimg.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+                        return new ImageIcon(scaled);
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Error al cargar foto: " + ex.getMessage());
+                }
+            }
+        }
+        return null;
+    }
+
+    private JPanel crearFilaDato(String etiqueta, String valor, boolean resaltar) {
+        JPanel p = new JPanel(new BorderLayout(8, 0));
+        p.setOpaque(false);
+        JLabel lblE = new JLabel(etiqueta);
+        lblE.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblE.setForeground(new Color(90, 100, 115));
+        lblE.setPreferredSize(new Dimension(95, 18));
+
+        JLabel lblV = new JLabel(valor);
+        lblV.setFont(new Font("Segoe UI", resaltar ? Font.BOLD : Font.PLAIN, resaltar ? 13 : 12));
+        lblV.setForeground(resaltar ? new Color(20, 30, 50) : new Color(50, 60, 75));
+
+        p.add(lblE, BorderLayout.WEST);
+        p.add(lblV, BorderLayout.CENTER);
+        return p;
+    }
+
+    private JPanel crearPanelCamara() {
+        JPanel card = new JPanel(new BorderLayout(0, 8));
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(new Color(220, 225, 230), 1, true),
+            new EmptyBorder(12, 16, 12, 16)
+        ));
+
+        // Título del panel
+        JPanel headerCam = new JPanel(new GridLayout(2, 1, 0, 2));
+        headerCam.setOpaque(false);
+        JLabel lblTituloCam = new JLabel("📹 CÁMARA EN VIVO (PUNTO DE ACCESO)");
+        lblTituloCam.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblTituloCam.setForeground(new Color(40, 50, 70));
+
+        JLabel lblSubCam = new JLabel("Observe a la persona en tiempo real para comparar");
+        lblSubCam.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        lblSubCam.setForeground(new Color(120, 130, 145));
+        headerCam.add(lblTituloCam);
+        headerCam.add(lblSubCam);
+        card.add(headerCam, BorderLayout.NORTH);
+
+        panelVideo = new PanelVideo();
+        panelVideo.setPreferredSize(new Dimension(380, 260));
+        card.add(panelVideo, BorderLayout.CENTER);
+
+        // Indicador inferior
+        JPanel footerCam = new JPanel(new BorderLayout());
+        footerCam.setOpaque(false);
+        footerCam.setBorder(new EmptyBorder(6, 4, 2, 4));
+        JLabel lblAyuda = new JLabel("⚠️ Compare los rasgos de la persona frente a la foto del perfil.");
+        lblAyuda.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+        lblAyuda.setForeground(new Color(211, 84, 0)); // Naranja
+        footerCam.add(lblAyuda, BorderLayout.CENTER);
+        card.add(footerCam, BorderLayout.SOUTH);
+
+        return card;
     }
 
     private void iniciarTransmisionCamara() {
