@@ -70,3 +70,139 @@ public class SerialManager {
         resultado.addAll(otrosPuertos);
         return resultado;
     }
+
+
+    public void iniciarAutoConexion() {
+        if (autoConnectEnabled) return;
+        autoConnectEnabled = true;
+
+        autoConnectThread = new Thread(() -> {
+            while (autoConnectEnabled) {
+                try {
+                    if (activePort != null && activePort.isOpen()) {
+                        // Verificar si el puerto sigue conectado físicamente a Windows
+                        boolean siguePresente = false;
+                        for (String p : obtenerPuertosDisponibles()) {
+                            if (p.equalsIgnoreCase(activePort.getSystemPortName())) {
+                                siguePresente = true;
+                                break;
+                            }
+                        }
+                        if (!siguePresente) {
+                            desconectar();
+                        }
+                    } else {
+                        List<String> puertos = obtenerPuertosDisponibles();
+                        boolean conectado = false;
+                        for (String puerto : puertos) {
+                            if (conectar(puerto, 115200)) {
+                                conectado = true;
+                                break;
+                            }
+                        }
+                        if (!conectado) {
+                            notificarEstado(false, "Buscando lector RFID...");
+                        }
+                    }
+
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    break;
+                } catch (Throwable t) {
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException ignored) {
+                        break;
+                    }
+                }
+            }
+        }, "SerialAutoConnectThread");
+
+        autoConnectThread.setDaemon(true);
+        autoConnectThread.start();
+    }
+
+    public void detenerAutoConexion() {
+        autoConnectEnabled = false;
+        if (autoConnectThread != null) {
+            autoConnectThread.interrupt();
+            autoConnectThread = null;
+        }
+        desconectar();
+    }
+
+    public synchronized boolean conectar(String portName, int baudRate) {
+        if (activePort != null && activePort.isOpen()) {
+            if (portName.equalsIgnoreCase(activePort.getSystemPortName())) {
+                return true; // Ya conectado a este puerto
+            }
+            desconectar();
+        }
+
+        try {
+            activePort = SerialPort.getCommPort(portName);
+            activePort.setBaudRate(baudRate);
+            activePort.setNumDataBits(8);
+            activePort.setNumStopBits(SerialPort.ONE_STOP_BIT);
+            activePort.setParity(SerialPort.NO_PARITY);
+            activePort.clearDTR();
+            activePort.clearRTS();
+
+            if (!activePort.openPort()) {
+                activePort = null;
+                return false;
+            }
+
+            // Usar listener de eventos con delimitador de fin de línea (\n)
+            activePort.addDataListener(new SerialPortMessageListener() {
+                @Override
+                public int getListeningEvents() {
+                    return SerialPort.LISTENING_EVENT_DATA_RECEIVED;
+                }
+
+                @Override
+                public byte[] getMessageDelimiter() {
+                    return new byte[]{'\n'};
+                }
+
+                @Override
+                public boolean delimiterIndicatesEndOfMessage() {
+                    return true;
+                }
+
+                @Override
+                public void serialEvent(SerialPortEvent event) {
+                    byte[] data = event.getReceivedData();
+                    if (data != null && data.length > 0) {
+                        String linea = new String(data, StandardCharsets.UTF_8).trim();
+                        if (!linea.isEmpty()) {
+                            procesarLinea(linea);
+                        }
+                    }
+                }
+            });
+
+            notificarEstado(true, "Lector RFID Conectado (" + portName + ")");
+            return true;
+        } catch (Exception e) {
+            activePort = null;
+            return false;
+        }
+    }
+
+    public synchronized void desconectar() {
+        if (activePort != null) {
+            try {
+                activePort.removeDataListener();
+            } catch (Throwable ignored) {}
+
+            if (activePort.isOpen()) {
+                try {
+                    activePort.closePort();
+                } catch (Throwable ignored) {}
+            }
+            activePort = null;
+            notificarEstado(false, "Buscando lector RFID...");
+        }
+    }
+}
