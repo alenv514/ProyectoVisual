@@ -1,7 +1,13 @@
 package com.controlacceso.modelos;
 
 /**
- * Representa una marcación de asistencia individual en el sistema.
+ * Representa un registro de asistencia de un empleado.
+ *
+ * Almacena la información correspondiente a las marcaciones de entrada y
+ * salida, incluyendo horarios, puntualidad y multas aplicadas.
+ *
+ * Permite mantener un historial de asistencias para su posterior consulta y
+ * auditoría.
  */
 public class RegistroAsistencia {
 

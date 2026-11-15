@@ -6,8 +6,13 @@ import com.controlacceso.modelos.Persona;
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 /**
+ * Representa a un empleado del sistema.
  *
- * @author Lenovo
+ * Hereda los atributos y métodos de la clase Persona. Incorpora información
+ * laboral y el identificador RFID utilizado para registrar su asistencia.
+ *
+ * Sobrescribe getDescripcionRol() para proporcionar una descripción específica
+ * del empleado.
  */
 public class Empleado extends Persona {
 

@@ -4,10 +4,14 @@
  */
 
 /**
+ * Clase abstracta que representa a una persona
+ * dentro del sistema de control de acceso RFID.
  *
- * @author Lenovo
+ * Aplica los principios de abstracción y encapsulamiento.
+ * Define los atributos comunes que heredarán
+ * las clases derivadas.
  */
-public class Persona {
+public abstract class Persona {
 
     protected int id;
     protected String nombre;
