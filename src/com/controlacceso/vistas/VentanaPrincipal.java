@@ -624,7 +624,7 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
         lblFiltroTipo.setText("Tipo:");
         panelFiltrosHistorial.add(lblFiltroTipo);
 
-        cbFiltroTipo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "TODOS", "ENTRADA MAÑANA", "SALIDA MAÑANA", "ENTRADA TARDE", "SALIDA TARDE", "ENTRADA ANTICIPADA", "ENTRADA ADICIONAL", "ACCESO DENEGADO" }));
+        cbFiltroTipo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "TODOS", "ENTRADA MAÑANA", "SALIDA MAÑANA", "ENTRADA TARDE", "SALIDA TARDE", "ENTRADA ANTICIPADA", "REINGRESO AUTORIZADO", "SALIDA DE REINGRESO", "REINGRESO DENEGADO", "ACCESO DENEGADO" }));
         panelFiltrosHistorial.add(cbFiltroTipo);
 
         lblFiltroEstado.setText("Estado:");
@@ -899,8 +899,9 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
                 lblMultaDetectada.setText(String.format(Locale.US, "$%.2f USD", reg.getMulta()));
                 lblMultaDetectada.setForeground(new java.awt.Color(255, 240, 120));
             } else {
-                panelEstadoAcceso.setBackground(new java.awt.Color(39, 174, 96)); // Verde éxito
-                lblTituloResultado.setText( reg.getTipo() + " - A TIEMPO");
+                panelEstadoAcceso.setBackground(new java.awt.Color(39, 174, 96));
+                String sufijo = reg.getTipo().contains("REINGRESO") ? "REGISTRADA" : "A TIEMPO";
+                lblTituloResultado.setText(reg.getTipo() + " - " + sufijo);
                 lblMultaDetectada.setText("$0.00 (Sin multa)");
                 lblMultaDetectada.setForeground(new java.awt.Color(190, 255, 190));
             }
@@ -1364,8 +1365,8 @@ public class VentanaPrincipal extends javax.swing.JFrame implements SerialListen
                     } else if (multa != null && !multa.toString().equals("$0.00") && !multa.toString().equals("-")) {
                         c.setBackground(new java.awt.Color(254, 243, 230));
                         c.setForeground(new java.awt.Color(180, 70, 0));
-                    } else if (puntualidad != null && puntualidad.toString().contains("A TIEMPO")) {
-                        c.setBackground(new java.awt.Color(235, 250, 238)); // Suave verde
+                    } else if (puntualidad != null && (puntualidad.toString().contains("A TIEMPO") || puntualidad.toString().contains("REINGRESO") || puntualidad.toString().contains("AUTORIZADO"))) {
+                        c.setBackground(new java.awt.Color(235, 250, 238));
                         c.setForeground(new java.awt.Color(20, 120, 45));
                     } else {
                         c.setBackground(java.awt.Color.WHITE);

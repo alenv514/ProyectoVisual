@@ -32,10 +32,11 @@ public class GestorTurnos {
         boolean tieneSalidaManana  = false;
         boolean tieneEntradaTarde  = false;
         boolean tieneSalidaTarde   = false;
+        boolean enReingresoActivo  = false;
 
         if (marcasHoy != null) {
             for (RegistroAsistencia m : marcasHoy) {
-                if ("ACCESO DENEGADO".equalsIgnoreCase(m.getEstado())) {
+                if (!"ACCESO PERMITIDO".equalsIgnoreCase(m.getEstado())) {
                     continue;
                 }
                 String t = m.getTipo();
@@ -43,6 +44,18 @@ public class GestorTurnos {
 
                 String norm = Normalizer.normalize(t.toUpperCase(), Normalizer.Form.NFD)
                         .replaceAll("[^A-Z]", " ");
+
+                boolean esReingreso = norm.contains("REINGRESO");
+                if (esReingreso && !norm.contains("SALIDA") && !norm.contains("DENEGADO")) {
+                    enReingresoActivo = true;
+                    continue;
+                } else {
+                    enReingresoActivo = false;
+                }
+
+                if (esReingreso) {
+                    continue;
+                }
 
                 boolean esEntrada = norm.contains("ENTRADA");
                 boolean esSalida  = norm.contains("SALIDA");
@@ -67,6 +80,10 @@ public class GestorTurnos {
                     if (esSalida)  tieneSalidaTarde  = true;
                 }
             }
+        }
+
+        if (enReingresoActivo) {
+            return new ResultadoCalculoTurno("SALIDA DE REINGRESO", "-", 0, 0.0, "SALIDA DE REINGRESO ($0.00)");
         }
 
         // 1. Horario de la Mañana (antes de las 13:00 / 1:00 PM)
