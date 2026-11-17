@@ -71,6 +71,7 @@ public class SerialManager {
         return resultado;
     }
 
+
     public void iniciarAutoConexion() {
         if (autoConnectEnabled) return;
         autoConnectEnabled = true;
