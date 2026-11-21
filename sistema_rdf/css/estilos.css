@@ -1,0 +1,280 @@
+/* =============================================================================
+   ESTILOS PERSONALIZADOS - SISTEMA DE CONTROL DE ACCESO Y ASISTENCIA RFID
+   Paleta Estricta:
+   - Verde: Pasar (Acceso Permitido)
+   - Rojo: No Permitido (Acceso Denegado)
+   - Naranja: Revisión del Admin (En Espera de Autorización)
+   - Fondo y componentes: Blanco y Grises exclusivamente
+   - Franja superior: Conservada intacta
+   ============================================================================= */
+
+:root {
+    --color-blanco: #ffffff;
+    --color-fondo: #f4f6f8;
+    --color-gris-100: #f8f9fa;
+    --color-gris-200: #e9ecef;
+    --color-gris-300: #dee2e6;
+    --color-gris-400: #ced4da;
+    --color-gris-600: #6c757d;
+    --color-gris-700: #495057;
+    --color-gris-800: #343a40;
+    --color-gris-900: #212529;
+
+    /* Los 3 únicos tonos funcionales permitidos */
+    --color-pasar: #28a745;        /* Verde */
+    --color-no-permitido: #dc3545; /* Rojo */
+    --color-revision: #fd7e14;     /* Naranja */
+}
+
+body {
+    background-color: var(--color-fondo);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--color-gris-900);
+}
+
+/* =============================================================================
+   FRANJA SUPERIOR INSTITUCIONAL (CONSERVADA)
+   ============================================================================= */
+.header-rfid {
+    background-color: #0b1e36;
+    border-bottom: 3px solid #0056b3;
+    padding: 10px 20px;
+    color: #fff;
+}
+
+.reloj-badge {
+    background-color: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 1.05rem;
+    font-weight: bold;
+    color: var(--color-pasar);
+}
+
+.estado-lector {
+    font-size: 0.9rem;
+    color: var(--color-pasar);
+    margin-right: 15px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* =============================================================================
+   PESTAÑAS DE NAVEGACIÓN (BLANCO Y GRIS)
+   ============================================================================= */
+.nav-tabs .nav-link {
+    color: var(--color-gris-600);
+    border: 1px solid transparent;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    font-weight: 600;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--color-gris-900);
+    border-color: var(--color-gris-200);
+    background-color: var(--color-gris-100);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--color-gris-900) !important;
+    background-color: var(--color-blanco) !important;
+    border-color: var(--color-gris-300) var(--color-gris-300) var(--color-blanco) !important;
+    border-bottom: 2px solid var(--color-gris-900) !important;
+}
+
+/* =============================================================================
+   TARJETA RFID VISUAL (GRIS POR DEFECTO / VERDE / ROJO / NARANJA)
+   ============================================================================= */
+.tarjeta-rfid-contenedor {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px auto;
+}
+
+.tarjeta-rfid {
+    width: 340px;
+    height: 195px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #2b3035 0%, #495057 100%);
+    color: #ffffff;
+    padding: 20px;
+    position: relative;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    transition: all 0.35s ease;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.tarjeta-rfid::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+/* 1. Verde para pasar */
+.tarjeta-rfid.acceso-permitido {
+    background: linear-gradient(135deg, #1e7e34 0%, #28a745 100%) !important;
+    box-shadow: 0 0 25px rgba(40, 167, 69, 0.7) !important;
+    animation: pulse-green 0.9s ease;
+}
+
+/* 2. Rojo para no permitido */
+.tarjeta-rfid.acceso-denegado {
+    background: linear-gradient(135deg, #b02a37 0%, #dc3545 100%) !important;
+    box-shadow: 0 0 25px rgba(220, 53, 69, 0.7) !important;
+    animation: shake-red 0.5s ease;
+}
+
+/* 3. Naranja para revisión del admin */
+.tarjeta-rfid.en-espera-admin {
+    background: linear-gradient(135deg, #d35400 0%, #fd7e14 100%) !important;
+    box-shadow: 0 0 25px rgba(253, 126, 20, 0.7) !important;
+    animation: pulse-orange 1s ease infinite alternate;
+}
+
+@keyframes pulse-green {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+}
+
+@keyframes pulse-orange {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.02); }
+}
+
+@keyframes shake-red {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+}
+
+.tarjeta-chip {
+    width: 44px;
+    height: 30px;
+    background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
+    border-radius: 5px;
+    margin-bottom: 12px;
+    border: 1px solid #6b7280;
+}
+
+.tarjeta-rfid-logo {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 1.8rem;
+    opacity: 0.85;
+}
+
+.tarjeta-uid {
+    font-family: 'Consolas', monospace;
+    font-size: 1.15rem;
+    letter-spacing: 2px;
+    margin: 8px 0 4px 0;
+}
+
+.tarjeta-nombre {
+    font-weight: 600;
+    font-size: 1.05rem;
+    text-transform: uppercase;
+}
+
+/* =============================================================================
+   CLASES SEMÁNTICAS (VERDE, ROJO, NARANJA, BLANCO Y GRISES)
+   ============================================================================= */
+.bg-naranja {
+    background-color: var(--color-revision) !important;
+    color: #ffffff !important;
+}
+
+.border-naranja {
+    border-color: var(--color-revision) !important;
+}
+
+.text-naranja {
+    color: var(--color-revision) !important;
+}
+
+.alert-naranja {
+    background-color: #fff4e6 !important;
+    color: #9c4100 !important;
+    border: 1px solid #ffd8a8 !important;
+}
+
+.btn-naranja {
+    background-color: var(--color-revision);
+    color: #ffffff;
+    font-weight: 600;
+    border: none;
+}
+.btn-naranja:hover {
+    background-color: #e8590c;
+    color: #ffffff;
+}
+
+/* Tablas y multas */
+.fila-infraccion {
+    background-color: #ffe3e3 !important;
+    color: var(--color-no-permitido) !important;
+    font-weight: 500;
+}
+
+.fila-infraccion td {
+    background-color: #ffe3e3 !important;
+    color: var(--color-no-permitido) !important;
+}
+
+/* Botones neutros en Blanco / Gris */
+.btn-guardar,
+.btn-jasper,
+.btn-neutral-dark {
+    background-color: var(--color-gris-800);
+    color: #ffffff;
+    font-weight: 600;
+    border: none;
+}
+.btn-guardar:hover,
+.btn-jasper:hover,
+.btn-neutral-dark:hover {
+    background-color: var(--color-gris-900);
+    color: #ffffff;
+}
+
+.btn-eliminar {
+    background-color: var(--color-no-permitido);
+    color: #ffffff;
+    font-weight: 600;
+    border: none;
+}
+.btn-eliminar:hover {
+    background-color: #b02a37;
+    color: #ffffff;
+}
+
+/* Tarjetas y Contenedores */
+.card {
+    background-color: var(--color-blanco);
+    border: 1px solid var(--color-gris-300) !important;
+}
+
+.card-header {
+    background-color: var(--color-gris-100) !important;
+    border-bottom: 1px solid var(--color-gris-300) !important;
+    color: var(--color-gris-900);
+}
+
+.table-light th {
+    background-color: var(--color-gris-200) !important;
+    color: var(--color-gris-800) !important;
+    border-color: var(--color-gris-300) !important;
+}
