@@ -91,7 +91,7 @@ function relojObtenerHoraOficialInternet() {
 }
 
 function relojRutaCooldown() {
-    return sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'sistema_rdf_ntp_cooldown.txt';
+    return sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'sistema_rdf_ntp_' . md5(__DIR__) . '.txt';
 }
 
 function relojPuedeIntentarSync() {

@@ -37,6 +37,20 @@ if ($respuesta && $respuesta->num_rows > 0) {
     }
 }
 
+function textoPdf($texto) {
+    $texto = (string) $texto;
+    if (function_exists('iconv')) {
+        $conv = @iconv('UTF-8', 'ISO-8859-1//TRANSLIT', $texto);
+        if ($conv !== false) {
+            return $conv;
+        }
+    }
+    if (function_exists('mb_convert_encoding')) {
+        return mb_convert_encoding($texto, 'ISO-8859-1', 'UTF-8');
+    }
+    return $texto;
+}
+
 class PDFReporte extends FPDF {
     public $filtroTexto;
     public $filtroTipo;
@@ -49,12 +63,12 @@ class PDFReporte extends FPDF {
         $this->SetFont('Arial', 'B', 16);
         $this->SetTextColor(15, 32, 67);
         $this->SetXY(14, 12);
-        $this->Cell(200, 8, utf8_decode("SISTEMA DE CONTROL DE ACCESO Y ASISTENCIA RFID"), 0, 1, 'L');
+        $this->Cell(200, 8, textoPdf("SISTEMA DE CONTROL DE ACCESO Y ASISTENCIA RFID"), 0, 1, 'L');
 
         $this->SetFont('Arial', 'I', 8);
         $this->SetTextColor(120, 120, 120);
         $this->SetXY(210, 12);
-        $this->Cell(73, 5, utf8_decode("Emisión: " . date('Y-m-d H:i:s')), 0, 1, 'R');
+        $this->Cell(73, 5, textoPdf("Emisión: " . date('Y-m-d H:i:s')), 0, 1, 'R');
 
         $this->SetDrawColor(200, 205, 215);
         $this->SetLineWidth(0.4);
@@ -67,7 +81,7 @@ class PDFReporte extends FPDF {
         $infoFiltro .= (!empty($this->filtroTexto)) ? "[Búsqueda: '" . $this->filtroTexto . "'] " : "[Búsqueda: Todos] ";
         $infoFiltro .= "[Tipo: " . $this->filtroTipo . "] ";
         $infoFiltro .= "[Estado: " . $this->filtroEstado . "]";
-        $this->Cell(269, 5, utf8_decode($infoFiltro), 0, 1, 'L');
+        $this->Cell(269, 5, textoPdf($infoFiltro), 0, 1, 'L');
 
         $this->Ln(2);
 
@@ -94,8 +108,8 @@ class PDFReporte extends FPDF {
 
         $this->SetFont('Arial', 'I', 8);
         $this->SetTextColor(120, 120, 120);
-        $this->Cell(140, 10, utf8_decode("Sistema RFID Universitario | Tarifa de atraso: $3.00/hora ($0.05/min)"), 0, 0, 'L');
-        $this->Cell(129, 10, utf8_decode("Página " . $this->PageNo() . " de {nb}"), 0, 0, 'R');
+        $this->Cell(140, 10, textoPdf("Sistema RFID Universitario | Tarifa de atraso: $3.00/hora ($0.05/min)"), 0, 0, 'L');
+        $this->Cell(129, 10, textoPdf("Página " . $this->PageNo() . " de {nb}"), 0, 0, 'R');
     }
 }
 
@@ -141,12 +155,12 @@ if (!empty($registros)) {
 
         $pdf->Cell(12, 6, $r['id'], 1, 0, 'C', $fill);
         $pdf->Cell(32, 6, $r['fecha_hora'], 1, 0, 'C', $fill);
-        $pdf->Cell(25, 6, utf8_decode($r['uid']), 1, 0, 'C', $fill);
-        $pdf->Cell(45, 6, utf8_decode(substr($r['nombre'], 0, 26)), 1, 0, 'L', $fill);
-        $pdf->Cell(28, 6, utf8_decode(substr($r['departamento'], 0, 16)), 1, 0, 'L', $fill);
-        $pdf->Cell(34, 6, utf8_decode($r['tipo']), 1, 0, 'C', $fill);
-        $pdf->Cell(22, 6, utf8_decode($r['horario_esperado']), 1, 0, 'C', $fill);
-        $pdf->Cell(50, 6, utf8_decode(substr($r['detalle_puntualidad'], 0, 32)), 1, 0, 'L', $fill);
+        $pdf->Cell(25, 6, textoPdf($r['uid']), 1, 0, 'C', $fill);
+        $pdf->Cell(45, 6, textoPdf(substr($r['nombre'], 0, 26)), 1, 0, 'L', $fill);
+        $pdf->Cell(28, 6, textoPdf(substr($r['departamento'], 0, 16)), 1, 0, 'L', $fill);
+        $pdf->Cell(34, 6, textoPdf($r['tipo']), 1, 0, 'C', $fill);
+        $pdf->Cell(22, 6, textoPdf($r['horario_esperado']), 1, 0, 'C', $fill);
+        $pdf->Cell(50, 6, textoPdf(substr($r['detalle_puntualidad'], 0, 32)), 1, 0, 'L', $fill);
 
         $multaStr = ($multaVal > 0) ? sprintf("$%.2f", $multaVal) : "$0.00";
         $pdf->Cell(21, 6, $multaStr, 1, 1, 'R', $fill);
@@ -158,13 +172,13 @@ if (!empty($registros)) {
     $pdf->SetTextColor(15, 32, 67);
     $pdf->SetDrawColor(180, 195, 215);
 
-    $pdf->Cell(176, 7, utf8_decode("TOTALES GENERALES (" . count($registros) . " Registros: " . $totalPermitidos . " Permitidos | " . $totalDenegados . " Denegados)"), 1, 0, 'L', true);
-    $pdf->Cell(72, 7, utf8_decode("Total Multas Acumuladas:"), 1, 0, 'R', true);
+    $pdf->Cell(176, 7, textoPdf("TOTALES GENERALES (" . count($registros) . " Registros: " . $totalPermitidos . " Permitidos | " . $totalDenegados . " Denegados)"), 1, 0, 'L', true);
+    $pdf->Cell(72, 7, textoPdf("Total Multas Acumuladas:"), 1, 0, 'R', true);
     $pdf->Cell(21, 7, sprintf("$%.2f", $totalMultas), 1, 1, 'R', true);
 } else {
     $pdf->SetFont('Arial', 'I', 10);
     $pdf->SetTextColor(120, 120, 120);
-    $pdf->Cell(269, 12, utf8_decode("No se encontraron registros con los filtros seleccionados."), 1, 1, 'C');
+    $pdf->Cell(269, 12, textoPdf("No se encontraron registros con los filtros seleccionados."), 1, 1, 'C');
 }
 
 $pdf->Output('I', 'Reporte_Asistencias_RFID_' . date('Ymd_His') . '.pdf');
